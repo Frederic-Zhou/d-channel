@@ -31,4 +31,4 @@ ddbs
 ## todo 
 
 1. 解密
-2. post.js中添加自己的加密pubkey
+2. 生成自己的age key

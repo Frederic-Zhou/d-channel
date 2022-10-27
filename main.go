@@ -1,17 +1,18 @@
 package main
 
-import (
-	"context"
-	// This package is needed so that all the preloaded plugins are loaded automatically
-	// ldformat "github.com/ipfs/go-ipld-format"
-)
+import "fmt"
+
+// This package is needed so that all the preloaded plugins are loaded automatically
+// ldformat "github.com/ipfs/go-ipld-format"
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
 
-	ipfsAPI, ipfsNode := StartNode(ctx)
+	keys := GetAge()
+	fmt.Println(keys)
+	// ipfsAPI, ipfsNode := StartNode(ctx)
 
-	StartWeb(ipfsAPI, ipfsNode)
+	// StartWeb(ipfsAPI, ipfsNode)
 
 }
