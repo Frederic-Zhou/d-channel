@@ -21,12 +21,14 @@
 
 ```
 ddbs
-|-keys.json
-|-[index1]post1
-    |-keys.json
-    |-index.html
-    |-asset
-        |-...
-|-[indexN]postN...
-
+|-post.json
+|-file1
+|-file2
+|-...
 ```
+
+
+## todo 
+
+1. 解密
+2. post.js中添加自己的加密pubkey
