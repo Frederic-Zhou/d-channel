@@ -53,12 +53,12 @@ func ipnsHandler(c *gin.Context) {
 	}
 
 	//pin
+	pin := "success"
 	err = IpfsAPI.Pin().Add(context.Background(), fullPath)
-
-	log.Println("path:", fullPath.String(), "pin err:", err)
-
-	c.Redirect(http.StatusTemporaryRedirect, fullPath.String())
-
+	if err != nil {
+		pin = err.Error()
+	}
+	c.JSON(http.StatusOK, responseJson{Code: 1, Data: pin})
 }
 
 func ipfsHandler(c *gin.Context) {
