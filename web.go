@@ -3,10 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -21,12 +19,15 @@ import (
 
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
+var SecretKeys []Key
 
 const indexFile = "post.json"
+const metaFile = "meta.json"
 
-func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode) {
+func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, secretkeys []Key) {
 	IpfsAPI = ipfsAPI
 	IpfsNode = ipfsNode
+	SecretKeys = secretkeys
 
 	router := gin.Default()
 
@@ -47,7 +48,7 @@ func ipnsHandler(c *gin.Context) {
 	fullPath, err := IpfsAPI.Name().Resolve(context.Background(), name+fpath)
 
 	if err != nil {
-		c.String(http.StatusOK, "err %s", err.Error())
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("err %s", err.Error())})
 		return
 	}
 
@@ -64,12 +65,9 @@ func ipfsHandler(c *gin.Context) {
 	cid := c.Param("cid")
 	fpath := c.Param("path")
 
-	fullPath := cid + fpath
-	log.Println("fullPath ", fullPath)
-
-	nd, err := IpfsAPI.Unixfs().Get(context.Background(), path.New(fullPath))
+	nd, err := IpfsAPI.Unixfs().Get(context.Background(), path.New(cid+fpath))
 	if err != nil {
-		c.String(http.StatusOK, "err %s", err)
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("err %s", err.Error())})
 		return
 	}
 	defer nd.Close()
@@ -81,51 +79,51 @@ func ipfsHandler(c *gin.Context) {
 	})
 
 	//如果是单文件，就以文件处理，如果多文件，就认为是目录，列出所有文件
-	if len(fs) == 1 {
-		f := files.ToFile(nd)
-		if f == nil {
-			c.String(http.StatusOK, "not a file")
-			return
-		}
-
-		data, err := io.ReadAll(f)
-		if err != nil {
-			c.String(http.StatusOK, "read data err %s", err.Error())
-			return
-		}
-
-		//在这里解密
-		//读取指定的公钥文件
-
-		if len(data) == 0 {
-			c.String(http.StatusOK, "data is empty")
-			return
-		}
-
-		c.Data(http.StatusOK, http.DetectContentType(data), data)
+	if len(fs) != 1 {
+		c.JSON(http.StatusOK, fs)
 		return
 	}
 
-	c.JSON(http.StatusOK, fs)
+	f := files.ToFile(nd)
+	if f == nil {
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: "not a file"})
+		return
+	}
+
+	//在这里解密
+	identitys := []age.Identity{}
+	for _, sk := range SecretKeys {
+		identitys = append(identitys, sk.Identity)
+	}
+
+	o := bytes.NewBuffer([]byte{})
+	err = Decrypt(identitys, f, o)
+	if err != nil {
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("decrypt err:%s", err.Error())})
+		return
+	}
+	data := o.Bytes()
+
+	c.Data(http.StatusOK, http.DetectContentType(data), data)
 
 }
 
 func publishHandler(c *gin.Context) {
 	log.Println("publish start")
-	//定义一个files.Nodes map,用于上传到IPFS网络
+	/// --- 1. 定义一个files.Nodes map,用于上传到IPFS网络
 	postMap := map[string]files.Node{}
 
 	//从请求中提取出请求内容
-	var post postJson
-	err := c.ShouldBind(&post)
+	var postform postForm
+	err := c.ShouldBind(&postform)
 	if err != nil {
 		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("bind err: %s", err.Error())})
 		return
 	}
 
-	//获得加密Pubkeys
+	/// --- 2. 获得加密Pubkeys
 	tos := []age.Recipient{}
-	for _, to := range post.To {
+	for _, to := range postform.To {
 		t, err := age.ParseX25519Recipient(to)
 		if err != nil {
 			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("to err: %s", err.Error())})
@@ -133,45 +131,57 @@ func publishHandler(c *gin.Context) {
 		}
 		tos = append(tos, t)
 	}
+	//如果tos不是0 ，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
+	if len(tos) != 0 {
+		for _, sk := range SecretKeys {
+			tos = append(tos, sk.Recipient)
+		}
+	}
 
-	//从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
+	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
 	log.Println("Attachments start")
 
-	for i, u := range post.Uploads {
+	for i, u := range postform.Uploads {
 		log.Println(i, u.Filename)
 		if _, ok := postMap[u.Filename]; u.Filename == indexFile || ok { //文件名不能为post,也不能重复
 			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("filename err: %s %t %t", u.Filename, u.Filename == indexFile, ok)})
 			return
 		}
 
-		post.Attachments = append(post.Attachments, u.Filename)
+		postform.Attachments = append(postform.Attachments, u.Filename)
 
 		f, err := u.Open()
 		if err != nil {
 			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("open file err: %s", err.Error())})
 			return
 		}
-		defer f.Close()
 
 		//使用to里面的公钥加密文件
-		var dst bytes.Buffer
-		w, err := age.Encrypt(&dst, tos...)
+		o := bytes.NewBuffer([]byte{})
+		err = Encrypt(tos, f, o, true)
 		if err != nil {
 			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
 			return
 		}
-		defer w.Close()
 
-		_, err = io.Copy(w, f)
-		if err != nil {
-			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("io.copy err: %s", err.Error())})
-			return
-		}
 		//获得文件的files.Node对象，并且保存到postMap
-		postMap[u.Filename] = files.NewBytesFile(dst.Bytes())
+		postMap[u.Filename] = files.NewBytesFile(o.Bytes())
+		f.Close()
 	}
 
-	//解析出self key下发布的最新的cid，并写入到post中的next字段
+	/// --- 4. 对post对象加密
+	postJson, _ := json.Marshal(postform.post)
+	f := bytes.NewBuffer(postJson)
+	o := bytes.NewBuffer([]byte{})
+	err = Encrypt(tos, f, o, true)
+	if err != nil {
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
+		return
+	}
+
+	postMap[indexFile] = files.NewBytesFile(o.Bytes())
+
+	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
 	log.Println("get Self key start")
 	self, err := IpfsAPI.Key().Self(context.Background())
 	if err != nil {
@@ -184,28 +194,13 @@ func publishHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("resolve err: %s", err.Error())})
 		return
 	}
-	post.Next = next.String()
+	postform.Next = next.String()
 
-	//对Body加密
-	var dst bytes.Buffer
-	w, err := age.Encrypt(&dst, tos...)
-	if err != nil {
-		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("body encrypt err: %s", err.Error())})
-		return
-	}
-	if _, err = io.WriteString(w, post.Body); err != nil {
-		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("body write err: %s", err.Error())})
-		return
-	}
-	defer w.Close()
+	/// --- 6. 将meta对象，重新序列化为json，并作为post.json文件
+	metaJson, _ := json.Marshal(postform.meta)
+	postMap[metaFile] = files.NewBytesFile(metaJson)
 
-	post.Body = base64.RawStdEncoding.EncodeToString(dst.Bytes())
-
-	//将post对象，重新序列化为json，并作为post.json文件
-	postBody, _ := json.Marshal(post)
-	postMap[indexFile] = files.NewBytesFile(postBody)
-
-	//将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
+	/// --- 7. 将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
 	log.Println("add to ipfs start")
 	cid, err := IpfsAPI.Unixfs().Add(context.Background(), files.NewMapDirectory(postMap))
 	if err != nil {
@@ -213,7 +208,7 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
-	//发布新的cid到self key
+	/// --- 8. 发布新的cid到self IPNS
 	log.Println("publishing name start")
 	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid)
 	if err != nil {
@@ -239,12 +234,18 @@ type responseJson struct {
 	Data interface{} `json:"data"`
 }
 
-type postJson struct {
-	Subject     string                  `json:"subject" form:"subject"`
-	Body        string                  `json:"body" form:"body"`
-	Type        string                  `json:"type" form:"type"`
-	To          []string                `json:"to" form:"to"`
-	Uploads     []*multipart.FileHeader `json:"-" form:"uploads"`
-	Attachments []string                `json:"attachments" form:"-"`
-	Next        string                  `json:"next" form:"next"`
+type postForm struct {
+	post
+	meta
+	Uploads []*multipart.FileHeader `json:"-" form:"uploads"`
+}
+type post struct {
+	Body        string   `json:"body" form:"body"`
+	Type        string   `json:"type" form:"type"`
+	Attachments []string `json:"attachments" form:"-"`
+}
+
+type meta struct {
+	To   []string `json:"to" form:"to"`
+	Next string   `json:"next" form:"next"`
 }
