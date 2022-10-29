@@ -251,6 +251,7 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 	return nil
 }
 
+// 新增IPFS key，也就是新增一个IPNS
 func addIpfsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
 	name := c.DefaultPostForm("name", "")
@@ -262,6 +263,7 @@ func addIpfsKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, key.Path()))
 }
 
+// 列出所有IPFS key，也就是列出所有IPNS
 func listIpfsKeyHandler(c *gin.Context) {
 
 	keys, err := IpfsAPI.Key().List(context.Background())
@@ -276,6 +278,7 @@ func listIpfsKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, keysArr))
 }
 
+// 使用一个新的密钥，会保留原来的私钥，新增一对公私钥，返回新的公钥
 func newSecretKeyHandler(c *gin.Context) {
 	var err error
 	SKeys, err = NewSecretKey()
@@ -286,6 +289,7 @@ func newSecretKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
+// 获得用于加密的公钥
 func getSecretKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
@@ -294,6 +298,7 @@ func indexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index", gin.H{})
 }
 
+// 格式化返回的JSON，补充将Data的类型，方便前端判断
 func ResponseJsonFormat(code int8, data interface{}) responseJson {
 	return responseJson{
 		Code: code,
@@ -302,6 +307,7 @@ func ResponseJsonFormat(code int8, data interface{}) responseJson {
 	}
 }
 
+// 获得IPFS的key对象，如果传递的名称没有对应的key，默认返回self
 func getIpfsKey(name string) (icore.Key, error) {
 	ipnsKeys, err := IpfsAPI.Key().List(context.Background())
 	if err != nil {
@@ -317,24 +323,29 @@ func getIpfsKey(name string) (icore.Key, error) {
 	return IpfsAPI.Key().Self(context.Background())
 }
 
+// json返回值对象
 type responseJson struct {
 	Code int8        `json:"code"`
 	Data interface{} `json:"data"`
 	Type string      `json:"type"`
 }
 
+// publish的表单request表单对象
 type postForm struct {
 	post                            //save to post.json
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
-	KeyName string                  `json:"-" form:"keyname"`
+	KeyName string                  `json:"-" form:"keyname"` //which key to publish
 }
+
+// 主内容对象
 type post struct {
 	Body        string   `json:"body" form:"body"`
 	Type        string   `json:"type" form:"type"`
 	Attachments []string `json:"attachments" form:"-"`
 }
 
+// 元数据对象，这个对象中的内容将不加密
 type meta struct {
 	To   []string `json:"to" form:"to"`
 	Next string   `json:"next" form:"next"`

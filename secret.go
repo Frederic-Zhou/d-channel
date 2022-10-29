@@ -117,6 +117,7 @@ func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 	return nil
 }
 
+// NewSecretKey 会保留原来的私钥，新增一对公私钥
 func NewSecretKey() (key SecretKeys, err error) {
 	//从文件读取
 	keysfile, err := os.ReadFile(keysFile)
