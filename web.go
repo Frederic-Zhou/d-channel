@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -91,13 +92,19 @@ func ipfsHandler(c *gin.Context) {
 	}
 
 	//在这里解密
+	//如果不能解密，作为原始文件输出
+	var data []byte
 	o := bytes.NewBuffer([]byte{})
 	err = Decrypt(SKeys.Identities, f, o)
 	if err != nil {
-		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("decrypt err:%s", err.Error())})
-		return
+		data, err = io.ReadAll(f)
+		if err != nil {
+			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("read raw err %s", err.Error())})
+			return
+		}
+	} else {
+		data = o.Bytes()
 	}
-	data := o.Bytes()
 
 	c.Data(http.StatusOK, http.DetectContentType(data), data)
 
@@ -118,19 +125,18 @@ func publishHandler(c *gin.Context) {
 
 	/// --- 2. 获得加密Pubkeys
 
-	//如果postform.To 有指定，那么加上自己的 Recipient ,否则自己是看不到自己发的消息的
+	//如果postform.To 有指定，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
+	tos := []age.Recipient{}
 	if len(postform.To) > 0 {
 		postform.To = append(postform.To, SKeys.Recipient.(*age.X25519Recipient).String())
-	}
-
-	tos := []age.Recipient{}
-	for _, to := range postform.To {
-		t, err := age.ParseX25519Recipient(to)
-		if err != nil {
-			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("to err: %s", err.Error())})
-			return
+		for _, to := range postform.To {
+			t, err := age.ParseX25519Recipient(to)
+			if err != nil {
+				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("to err: %s", err.Error())})
+				return
+			}
+			tos = append(tos, t)
 		}
-		tos = append(tos, t)
 	}
 
 	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
@@ -151,16 +157,29 @@ func publishHandler(c *gin.Context) {
 			return
 		}
 
-		//使用to里面的公钥加密文件
-		o := bytes.NewBuffer([]byte{})
-		err = Encrypt(tos, f, o, true)
-		if err != nil {
-			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
-			return
-		}
+		var data []byte
+		//如果有to，说明
+		if len(postform.To) > 0 {
+			// 使用to里面的公钥加密文件
+			o := bytes.NewBuffer([]byte{})
+			err = Encrypt(tos, f, o, true)
+			if err != nil {
+				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
+				return
+			}
 
-		//获得文件的files.Node对象，并且保存到postMap
-		postMap[u.Filename] = files.NewBytesFile(o.Bytes())
+			data = o.Bytes()
+		} else {
+			data, err = io.ReadAll(f)
+			if err != nil {
+				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("read file err: %s", err.Error())})
+				return
+			}
+
+		}
+		// 获得文件的files.Node对象，并且保存到postMap
+		postMap[u.Filename] = files.NewBytesFile(data)
+
 		f.Close()
 	}
 
