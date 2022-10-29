@@ -246,9 +246,9 @@ type responseJson struct {
 }
 
 type postForm struct {
-	post
-	meta
-	Uploads []*multipart.FileHeader `json:"-" form:"uploads"`
+	post                            //save to post.json
+	meta                            //save to meta.json
+	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
 }
 type post struct {
 	Body        string   `json:"body" form:"body"`
