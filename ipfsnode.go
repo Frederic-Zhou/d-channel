@@ -29,7 +29,6 @@ func StartNode(ctx context.Context) (ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsN
 	}
 
 	return
-
 }
 
 // / ------ Setting up the IPFS Repo

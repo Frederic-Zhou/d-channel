@@ -2,16 +2,18 @@ package test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
-func TestMap(t *testing.T) {
+func TestStructType(t *testing.T) {
 
-	m := map[string]string{"a": "b"}
+	m := map[string]interface{}{"a": "b", "v": 1}
 
-	_, ok := m["a"]
-	fmt.Println(ok)
+	type1 := reflect.TypeOf(m)
 
-	_, ok = m["b"]
-	fmt.Println(ok)
+	str := []float64{13.21}
+	fmt.Printf("%s\n%v\n%+v\n%#v\n%T\n", type1.String(), m, m, m, m)
+	fmt.Printf("%v\n%+v\n%#v\n%T\n", str, str, str, str)
+
 }
