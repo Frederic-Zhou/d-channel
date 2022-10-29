@@ -140,51 +140,15 @@ func publishHandler(c *gin.Context) {
 
 	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
 	log.Println("Attachments start")
-
-	for i, u := range postform.Uploads {
-		log.Println(i, u.Filename)
-		if _, ok := postMap[u.Filename]; u.Filename == indexFile || ok { //文件名不能为post,也不能重复
-			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("filename err: %s %t %t", u.Filename, u.Filename == indexFile, ok)))
-			return
-		}
-
-		postform.Attachments = append(postform.Attachments, u.Filename)
-
-		f, err := u.Open()
-		if err != nil {
-			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("open file err: %s", err.Error())))
-			return
-		}
-
-		var data []byte
-		//如果有to，说明需要加密
-		if len(postform.To) > 0 {
-			// 使用to里面的公钥加密文件
-			o := bytes.NewBuffer([]byte{})
-			err = Encrypt(tos, f, o)
-			if err != nil {
-				c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("encrypt file err: %s", err.Error())))
-				return
-			}
-
-			data = o.Bytes()
-		} else {
-			data, err = io.ReadAll(f)
-			if err != nil {
-				c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("read file err: %s", err.Error())))
-				return
-			}
-
-		}
-		// 获得文件加密后的数据（或者不需要加密的原始数据），并且保存到postMap
-		postMap[u.Filename] = files.NewBytesFile(data)
-
-		f.Close()
+	err = uploadFiles(&postform, postMap, tos)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
 	}
 
 	/// --- 4. 对post对象加密（如果不需要加密则保存原始数据）
 	data, _ := json.Marshal(postform.post)
-	if len(postform.To) > 0 {
+	if len(tos) > 0 {
 		f := bytes.NewBuffer(data)
 		o := bytes.NewBuffer([]byte{})
 		err = Encrypt(tos, f, o)
@@ -239,6 +203,52 @@ func publishHandler(c *gin.Context) {
 		"name":  nameEntry.Name(),
 		"value": nameEntry.Value().String(),
 	}))
+}
+
+// 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
+func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Recipient) error {
+	//迭代所有附件
+	//文件名不能为post,也不能重复
+	// 如果有to，说明需要加密
+	// 使用to里面的公钥加密文件
+	// 获得文件加密后的数据（或者不需要加密的原始数据），并且保存到postMap
+	for i, u := range postform.Uploads {
+		log.Println(i, u.Filename)
+		if _, ok := postMap[u.Filename]; u.Filename == indexFile || ok {
+			return fmt.Errorf("filename err: %s %t %t", u.Filename, u.Filename == indexFile, ok)
+		}
+
+		postform.Attachments = append(postform.Attachments, u.Filename)
+
+		f, err := u.Open()
+		if err != nil {
+			return fmt.Errorf("open file err: %s", err.Error())
+		}
+
+		var data []byte
+
+		if len(postform.To) > 0 {
+
+			o := bytes.NewBuffer([]byte{})
+			err = Encrypt(tos, f, o)
+			if err != nil {
+				return fmt.Errorf("encrypt file err: %s", err.Error())
+			}
+
+			data = o.Bytes()
+		} else {
+			data, err = io.ReadAll(f)
+			if err != nil {
+				return fmt.Errorf("read file err: %s", err.Error())
+			}
+
+		}
+
+		postMap[u.Filename] = files.NewBytesFile(data)
+
+		f.Close()
+	}
+	return nil
 }
 
 func addIpfsKeyHandler(c *gin.Context) {

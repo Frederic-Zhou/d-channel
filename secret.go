@@ -99,7 +99,7 @@ func Encrypt(recipients []age.Recipient, in io.Reader, out io.Writer) error {
 func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 	rr := bufio.NewReader(in)
 	var r io.Reader
-	//如果不是amor开头，认为不是加密文件
+	//如果不是amor开头，认为不是加密文件，返回原始数据到out
 	if start, _ := rr.Peek(len(armor.Header)); string(start) == armor.Header {
 		in = armor.NewReader(rr)
 		var err error
