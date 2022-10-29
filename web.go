@@ -19,15 +19,15 @@ import (
 
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
-var SecretKeys []Key
+var SKeys SecretKeys
 
 const indexFile = "post.json"
 const metaFile = "meta.json"
 
-func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, secretkeys []Key) {
+func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, skeys SecretKeys) {
 	IpfsAPI = ipfsAPI
 	IpfsNode = ipfsNode
-	SecretKeys = secretkeys
+	SKeys = skeys
 
 	router := gin.Default()
 
@@ -92,8 +92,8 @@ func ipfsHandler(c *gin.Context) {
 
 	//在这里解密
 	identitys := []age.Identity{}
-	for _, sk := range SecretKeys {
-		identitys = append(identitys, sk.Identity)
+	for _, id := range SKeys.Identities {
+		identitys = append(identitys, id)
 	}
 
 	o := bytes.NewBuffer([]byte{})
@@ -133,9 +133,7 @@ func publishHandler(c *gin.Context) {
 	}
 	//如果tos不是0 ，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	if len(tos) != 0 {
-		for _, sk := range SecretKeys {
-			tos = append(tos, sk.Recipient)
-		}
+		tos = append(tos, SKeys.Recipient)
 	}
 
 	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名

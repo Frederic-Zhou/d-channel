@@ -2,105 +2,68 @@ package main
 
 import (
 	"bufio"
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
-	"path/filepath"
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
 )
 
-func GetAge() (keys []Key) {
+const keysFile = "./keys.json"
 
-	//创建目录，如果不存在
-	keystore, err := createKeystore()
-	if err != nil {
-		panic(fmt.Errorf("failed to create key store"))
-	}
+func GetAge() (key SecretKeys) {
 
-	//查询目录中所有key文件
-	filepath.Walk(keystore, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			panic(fmt.Errorf("keystore walk:%s", err.Error()))
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		keyfile, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-
-		fbytes := bytes.Split(keyfile, []byte("\n"))
-		if len(fbytes) != 2 {
-			return nil
-		}
-
-		re, err := age.ParseX25519Recipient(string(fbytes[0]))
-		if err != nil {
-			return nil
-		}
-		id, err := age.ParseX25519Identity(string(fbytes[1]))
-		if err != nil {
-			return nil
-		}
-
-		keys = append(keys, Key{Name: filepath.Base(path), Recipient: re, Identity: id})
-
-		return nil
-	})
-
-	//如果一个都没有，创建一个
-	if len(keys) == 0 {
+	keysfile, err := os.ReadFile(keysFile)
+	keyMap := keyMap{}
+	if os.IsNotExist(err) {
 		identity, err := age.GenerateX25519Identity()
 		if err != nil {
 			panic(fmt.Errorf("failed to spawn age indetity: %s", err))
 		}
 
-		key := Key{
-			Name:      "self",
-			Identity:  identity,
-			Recipient: identity.Recipient(),
-		}
+		keyMap.Identities = []string{identity.String()}
+		keyMap.Recipient = identity.Recipient().String()
 
-		err = os.WriteFile(filepath.Join(keystore, key.Name),
-			bytes.Join([][]byte{
-				[]byte(identity.Recipient().String()),
-				[]byte(identity.String()),
-			}, []byte("\n")), 0644)
+		data, err := json.Marshal(keyMap)
+		if err != nil {
+			panic(fmt.Errorf("failed to json format keys"))
+		}
+		err = os.WriteFile(keysFile, data, 0644)
 		if err != nil {
 			panic(fmt.Errorf("failed to write key store"))
 		}
 
-		keys = append(keys, key)
-
+		return
 	}
 
-	return keys
-}
+	json.Unmarshal(keysfile, &keyMap)
 
-func createKeystore() (string, error) {
-	keystore := "./keystore"
-	err := os.Mkdir(keystore, 0755)
-	if os.IsExist(err) {
-		return keystore, nil
-	}
+	key.Recipient, err = age.ParseX25519Recipient(keyMap.Recipient)
 	if err != nil {
-		os.Remove(keystore)
-		return "", err
+		panic(fmt.Errorf("failed to read key Recipient %s", err.Error()))
 	}
-	return keystore, nil
+
+	for _, s := range keyMap.Identities {
+		id, err := age.ParseX25519Identity(s)
+		if err != nil {
+			panic(fmt.Errorf("failed to read identities %s", err.Error()))
+		}
+		key.Identities = append(key.Identities, id)
+	}
+
+	return
+
 }
 
-type Key struct {
-	Name      string
-	Identity  *age.X25519Identity
-	Recipient *age.X25519Recipient
+type SecretKeys struct {
+	Identities []age.Identity `json:"identities"`
+	Recipient  age.Recipient  `json:"recipient"`
+}
+type keyMap struct {
+	Identities []string `json:"identities"`
+	Recipient  string   `json:"recipient"`
 }
 
 func Encrypt(recipients []age.Recipient, in io.Reader, out io.Writer, withArmor bool) error {
