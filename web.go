@@ -91,13 +91,8 @@ func ipfsHandler(c *gin.Context) {
 	}
 
 	//在这里解密
-	identitys := []age.Identity{}
-	for _, id := range SKeys.Identities {
-		identitys = append(identitys, id)
-	}
-
 	o := bytes.NewBuffer([]byte{})
-	err = Decrypt(identitys, f, o)
+	err = Decrypt(SKeys.Identities, f, o)
 	if err != nil {
 		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("decrypt err:%s", err.Error())})
 		return
@@ -122,6 +117,12 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 2. 获得加密Pubkeys
+
+	//如果postform.To 有指定，那么加上自己的 Recipient ,否则自己是看不到自己发的消息的
+	if len(postform.To) > 0 {
+		postform.To = append(postform.To, SKeys.Recipient.(*age.X25519Recipient).String())
+	}
+
 	tos := []age.Recipient{}
 	for _, to := range postform.To {
 		t, err := age.ParseX25519Recipient(to)
@@ -130,10 +131,6 @@ func publishHandler(c *gin.Context) {
 			return
 		}
 		tos = append(tos, t)
-	}
-	//如果tos不是0 ，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
-	if len(tos) != 0 {
-		tos = append(tos, SKeys.Recipient)
 	}
 
 	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
