@@ -15,18 +15,21 @@ const keysFile = "./keys.json"
 
 func GetAge() (key SecretKeys) {
 
+	//从文件中读取key
+	//如果文件不存在，创建
+	//如果存在，读取到keyJson，然后通过age.Parse方法，将文本的key转换为对象返回
 	keysfile, err := os.ReadFile(keysFile)
-	keyMap := keyMap{}
-	if os.IsNotExist(err) {
+	keyJson := keyJson{}
+	if os.IsNotExist(err) { //如果不存在错误，创建新key，并写入到keyJson
 		identity, err := age.GenerateX25519Identity()
 		if err != nil {
 			panic(fmt.Errorf("failed to spawn age indetity: %s", err))
 		}
 
-		keyMap.Identities = []string{identity.String()}
-		keyMap.Recipient = identity.Recipient().String()
+		keyJson.Identities = []string{identity.String()}
+		keyJson.Recipient = identity.Recipient().String()
 
-		data, err := json.Marshal(keyMap)
+		data, err := json.Marshal(keyJson)
 		if err != nil {
 			panic(fmt.Errorf("failed to json format keys"))
 		}
@@ -35,17 +38,21 @@ func GetAge() (key SecretKeys) {
 			panic(fmt.Errorf("failed to write key store"))
 		}
 
-		return
+	} else if err != nil { //如果是非不存在的其他错误
+		panic(fmt.Errorf("failed to read %s", err.Error()))
+	} else { //存在，并且没有错误，用文件转换为keyJson
+		err = json.Unmarshal(keysfile, &keyJson)
+		if err != nil {
+			panic(fmt.Errorf("failed to Unmarshal %s", err.Error()))
+		}
 	}
 
-	json.Unmarshal(keysfile, &keyMap)
-
-	key.Recipient, err = age.ParseX25519Recipient(keyMap.Recipient)
+	key.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
 	if err != nil {
 		panic(fmt.Errorf("failed to read key Recipient %s", err.Error()))
 	}
 
-	for _, s := range keyMap.Identities {
+	for _, s := range keyJson.Identities {
 		id, err := age.ParseX25519Identity(s)
 		if err != nil {
 			panic(fmt.Errorf("failed to read identities %s", err.Error()))
@@ -61,7 +68,7 @@ type SecretKeys struct {
 	Identities []age.Identity `json:"identities"`
 	Recipient  age.Recipient  `json:"recipient"`
 }
-type keyMap struct {
+type keyJson struct {
 	Identities []string `json:"identities"`
 	Recipient  string   `json:"recipient"`
 }
@@ -110,5 +117,49 @@ func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 	return nil
 }
 
-const crlfMangledIntro = "age-encryption.org/v1" + "\r"
-const utf16MangledIntro = "\xff\xfe" + "a\x00g\x00e\x00-\x00e\x00n\x00c\x00r\x00y\x00p\x00"
+func NewSecretKey() (key SecretKeys, err error) {
+	//从文件读取
+	keysfile, err := os.ReadFile(keysFile)
+	if err != nil {
+		return
+	}
+	keyJson := keyJson{}
+
+	//转换为keyJson
+	err = json.Unmarshal(keysfile, &keyJson)
+	if err != nil {
+		panic(fmt.Errorf("failed to Unmarshal %s", err.Error()))
+	}
+
+	//生成新的
+	identity, err := age.GenerateX25519Identity()
+	if err != nil {
+		panic(fmt.Errorf("failed to spawn age indetity: %s", err))
+	}
+
+	//保存到keyJson中，并从新写入到keyfile
+	keyJson.Identities = append(keyJson.Identities, identity.String())
+	keyJson.Recipient = identity.Recipient().String()
+
+	data, err := json.Marshal(keyJson)
+	if err != nil {
+		return
+	}
+	err = os.WriteFile(keysFile, data, 0644)
+	if err != nil {
+		return
+	}
+
+	key.Recipient = identity.Recipient()
+
+	for _, s := range keyJson.Identities {
+		var id *age.X25519Identity
+		id, err = age.ParseX25519Identity(s)
+		if err != nil {
+			return
+		}
+		key.Identities = append(key.Identities, id)
+	}
+
+	return
+}

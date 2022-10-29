@@ -36,6 +36,10 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, skeys SecretKeys) 
 	router.GET("/ipns/:name/*path", ipnsHandler)
 	router.GET("/ipfs/:cid/*path", ipfsHandler)
 	router.POST("/publish", publishHandler)
+	router.POST("/addipfskey", addIpfsKeyHandler)
+	router.GET("/listipfskey", listIpfsKeyHandler)
+	router.POST("/newsecretkey", newSecretKeyHandler)
+	router.GET("/getsecretkey", getSecretKeyHandler)
 	router.GET("/index", indexHandler)
 
 	router.Run(":8088")
@@ -237,13 +241,43 @@ func publishHandler(c *gin.Context) {
 	}))
 }
 
-func addIpfsKey() {
+func addIpfsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
+	name := c.DefaultPostForm("name", "")
+	key, err := IpfsAPI.Key().Generate(context.Background(), name)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+	}
 
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, key.Path()))
 }
 
-func newSecretKey() {
+func listIpfsKeyHandler(c *gin.Context) {
 
+	keys, err := IpfsAPI.Key().List(context.Background())
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+	}
+	keysArr := [][]string{}
+	for _, key := range keys {
+		keysArr = append(keysArr, []string{key.Name(), key.Path().String()})
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, keysArr))
+}
+
+func newSecretKeyHandler(c *gin.Context) {
+	var err error
+	SKeys, err = NewSecretKey()
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
+}
+
+func getSecretKeyHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
 func indexHandler(c *gin.Context) {
