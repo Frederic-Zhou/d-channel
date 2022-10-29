@@ -92,19 +92,14 @@ func ipfsHandler(c *gin.Context) {
 	}
 
 	//在这里解密
-	//如果不能解密，作为原始文件输出
-	var data []byte
+	//如果不是密闻，Decrypt会自动判断，返回原始数据
 	o := bytes.NewBuffer([]byte{})
 	err = Decrypt(SKeys.Identities, f, o)
 	if err != nil {
-		data, err = io.ReadAll(f)
-		if err != nil {
-			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("read raw err %s", err.Error())})
-			return
-		}
-	} else {
-		data = o.Bytes()
+		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("decrypt err %s", err.Error())})
+		return
 	}
+	data := o.Bytes()
 
 	c.Data(http.StatusOK, http.DetectContentType(data), data)
 
@@ -123,17 +118,16 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
-	/// --- 2. 获得加密Pubkeys
+	/// --- 2. 获得组织加密公钥
 
-	//如果postform.To 有指定，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
+	//如果postform.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	tos := []age.Recipient{}
 	if len(postform.To) > 0 {
 		postform.To = append(postform.To, SKeys.Recipient.(*age.X25519Recipient).String())
 		for _, to := range postform.To {
 			t, err := age.ParseX25519Recipient(to)
 			if err != nil {
-				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("to err: %s", err.Error())})
-				return
+				continue
 			}
 			tos = append(tos, t)
 		}
@@ -158,13 +152,13 @@ func publishHandler(c *gin.Context) {
 		}
 
 		var data []byte
-		//如果有to，说明
+		//如果有to，说明需要加密
 		if len(postform.To) > 0 {
 			// 使用to里面的公钥加密文件
 			o := bytes.NewBuffer([]byte{})
-			err = Encrypt(tos, f, o, true)
+			err = Encrypt(tos, f, o)
 			if err != nil {
-				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
+				c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt file err: %s", err.Error())})
 				return
 			}
 
@@ -177,23 +171,26 @@ func publishHandler(c *gin.Context) {
 			}
 
 		}
-		// 获得文件的files.Node对象，并且保存到postMap
+		// 获得文件加密后的数据（或者不需要加密的原始数据），并且保存到postMap
 		postMap[u.Filename] = files.NewBytesFile(data)
 
 		f.Close()
 	}
 
-	/// --- 4. 对post对象加密
-	postJson, _ := json.Marshal(postform.post)
-	f := bytes.NewBuffer(postJson)
-	o := bytes.NewBuffer([]byte{})
-	err = Encrypt(tos, f, o, true)
-	if err != nil {
-		c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt err: %s", err.Error())})
-		return
+	/// --- 4. 对post对象加密（如果不需要加密则保存原始数据）
+	data, _ := json.Marshal(postform.post)
+	if len(postform.To) > 0 {
+		f := bytes.NewBuffer(data)
+		o := bytes.NewBuffer([]byte{})
+		err = Encrypt(tos, f, o)
+		if err != nil {
+			c.JSON(http.StatusOK, responseJson{Code: 0, Data: fmt.Sprintf("encrypt post err: %s", err.Error())})
+			return
+		}
+		data = o.Bytes()
 	}
 
-	postMap[indexFile] = files.NewBytesFile(o.Bytes())
+	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
 	log.Println("get Self key start")
@@ -210,7 +207,7 @@ func publishHandler(c *gin.Context) {
 	}
 	postform.Next = next.String()
 
-	/// --- 6. 将meta对象，重新序列化为json，并作为post.json文件
+	/// --- 6. 将meta对象，重新序列化为json，并作为meta.json文件保存
 	metaJson, _ := json.Marshal(postform.meta)
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 

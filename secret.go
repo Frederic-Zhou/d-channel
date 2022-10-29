@@ -66,16 +66,16 @@ type keyMap struct {
 	Recipient  string   `json:"recipient"`
 }
 
-func Encrypt(recipients []age.Recipient, in io.Reader, out io.Writer, withArmor bool) error {
-	if withArmor {
-		a := armor.NewWriter(out)
-		defer func() {
-			if err := a.Close(); err != nil {
-				return
-			}
-		}()
-		out = a
-	}
+func Encrypt(recipients []age.Recipient, in io.Reader, out io.Writer) error {
+
+	a := armor.NewWriter(out)
+	defer func() {
+		if err := a.Close(); err != nil {
+			return
+		}
+	}()
+	out = a
+
 	w, err := age.Encrypt(out, recipients...)
 	if err != nil {
 		return err
@@ -91,24 +91,19 @@ func Encrypt(recipients []age.Recipient, in io.Reader, out io.Writer, withArmor 
 
 func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 	rr := bufio.NewReader(in)
-	if intro, _ := rr.Peek(len(crlfMangledIntro)); string(intro) == crlfMangledIntro ||
-		string(intro) == utf16MangledIntro {
-		return fmt.Errorf("%s%s%s",
-			"invalid header intro",
-			"it looks like this file was corrupted by PowerShell redirection",
-			"consider using -o or -a to encrypt files in PowerShell")
-	}
-
+	var r io.Reader
+	//如果不是amor开头，认为不是加密文件
 	if start, _ := rr.Peek(len(armor.Header)); string(start) == armor.Header {
 		in = armor.NewReader(rr)
+		var err error
+		r, err = age.Decrypt(in, identities...)
+		if err != nil {
+			return err
+		}
 	} else {
-		in = rr
+		r = rr
 	}
 
-	r, err := age.Decrypt(in, identities...)
-	if err != nil {
-		return err
-	}
 	if _, err := io.Copy(out, r); err != nil {
 		return err
 	}
