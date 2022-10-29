@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/core"
 )
@@ -193,14 +194,14 @@ func publishHandler(c *gin.Context) {
 	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
-	log.Println("get Self key start")
-	self, err := IpfsAPI.Key().Self(context.Background())
+	log.Println("get last cid start")
+
+	ipfskey, err := getIpfsKey(postform.KeyName)
 	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get self key err: %s", err.Error())))
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
 		return
 	}
-	log.Println("get last cid start")
-	next, err := IpfsAPI.Name().Resolve(context.Background(), self.Path().String())
+	next, err := IpfsAPI.Name().Resolve(context.Background(), ipfskey.Path().String())
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
 		return
@@ -221,7 +222,7 @@ func publishHandler(c *gin.Context) {
 
 	/// --- 8. 发布新的cid到self IPNS
 	log.Println("publishing name start")
-	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid)
+	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipfskey.Name()))
 	if err != nil {
 		log.Println("publish error", err)
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
@@ -236,6 +237,15 @@ func publishHandler(c *gin.Context) {
 	}))
 }
 
+func addIpfsKey() {
+	// options.NamePublishOption
+
+}
+
+func newSecretKey() {
+
+}
+
 func indexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index", gin.H{})
 }
@@ -248,6 +258,21 @@ func ResponseJsonFormat(code int8, data interface{}) responseJson {
 	}
 }
 
+func getIpfsKey(name string) (icore.Key, error) {
+	ipnsKeys, err := IpfsAPI.Key().List(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, k := range ipnsKeys {
+		if k.Name() == name {
+			return k, nil
+		}
+	}
+
+	return IpfsAPI.Key().Self(context.Background())
+}
+
 type responseJson struct {
 	Code int8        `json:"code"`
 	Data interface{} `json:"data"`
@@ -258,6 +283,7 @@ type postForm struct {
 	post                            //save to post.json
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
+	KeyName string                  `json:"-" form:"keyname"`
 }
 type post struct {
 	Body        string   `json:"body" form:"body"`
