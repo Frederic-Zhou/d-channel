@@ -296,7 +296,7 @@ func getSecretKeyHandler(c *gin.Context) {
 
 // 获得本地存储
 func localstoreHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, GetLocalStore()))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, ReadStore()))
 }
 
 // 订阅其他人的IPNS name

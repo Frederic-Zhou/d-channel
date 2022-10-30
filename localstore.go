@@ -8,6 +8,7 @@ import (
 
 const localstorePath = "./localstore.json"
 
+// 本地存储主要保存订阅的IPNS name和Receipient
 var localstore LocalStore
 
 func ReadStore() LocalStore {
@@ -49,10 +50,6 @@ func AddRecipient(aka, recipient string) (LocalStore, error) {
 	lsf, _ := json.Marshal(localstore)
 	err := os.WriteFile(localstorePath, lsf, 0644)
 	return localstore, err
-}
-
-func GetLocalStore() LocalStore {
-	return localstore
 }
 
 type LocalStore struct {
