@@ -294,6 +294,46 @@ func getSecretKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
+// 获得本地存储
+func localstoreHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, GetLocalStore()))
+}
+
+// 订阅其他人的IPNS name
+func subNameHandler(c *gin.Context) {
+	aka := c.DefaultPostForm("aka", "")
+	name := c.DefaultPostForm("name", "")
+	if aka == "" && name == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null aka or name"))
+		return
+	}
+
+	ls, err := AddSubName(aka, name)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, ls))
+}
+
+// 添加其他人的Recipient
+func addRecipientHandler(c *gin.Context) {
+	aka := c.DefaultPostForm("aka", "")
+	recipient := c.DefaultPostForm("recipient", "")
+	if aka == "" && recipient == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null aka or recipient"))
+		return
+	}
+
+	ls, err := AddRecipient(aka, recipient)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, ls))
+
+}
+
 func indexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index", gin.H{})
 }

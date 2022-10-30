@@ -11,7 +11,7 @@ import (
 	"filippo.io/age/armor"
 )
 
-const keysFile = "./keys.json"
+const keysFile = "./secretkeys.json"
 
 func GetAge() (key SecretKeys) {
 
