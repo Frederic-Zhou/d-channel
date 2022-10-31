@@ -281,7 +281,7 @@ func listIpfsKeyHandler(c *gin.Context) {
 // 使用一个新的密钥，会保留原来的私钥，新增一对公私钥，返回新的公钥
 func newSecretKeyHandler(c *gin.Context) {
 	var err error
-	SKeys, err = NewSecretKey()
+	SKeys, err = NewSecretKey(c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return

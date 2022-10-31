@@ -11,7 +11,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	secretkeys := GetAge()
+	secretkeys := GetAge("123")
 
 	ipfsAPI, ipfsNode := StartNode(ctx)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +14,9 @@ import (
 
 const keysFile = "./secretkeys.json"
 
-func GetAge() (key SecretKeys) {
+var secretKeys SecretKeys
+
+func GetAge(password string) SecretKeys {
 
 	//从文件中读取key
 	//如果文件不存在，创建
@@ -33,7 +36,20 @@ func GetAge() (key SecretKeys) {
 		if err != nil {
 			panic(fmt.Errorf("failed to json format keys"))
 		}
-		err = os.WriteFile(keysFile, data, 0644)
+
+		scryptRecipient, err := age.NewScryptRecipient(password)
+		if err != nil {
+			panic(fmt.Errorf("failed to NewScryptRecipient"))
+		}
+
+		kfbuf := bytes.NewBuffer(data)
+		out := bytes.NewBuffer([]byte{})
+		err = Encrypt([]age.Recipient{scryptRecipient}, kfbuf, out)
+		if err != nil {
+			panic(fmt.Errorf("failed to password encrypt"))
+		}
+
+		err = os.WriteFile(keysFile, out.Bytes(), 0644)
 		if err != nil {
 			panic(fmt.Errorf("failed to write key store"))
 		}
@@ -41,13 +57,25 @@ func GetAge() (key SecretKeys) {
 	} else if err != nil { //如果是非不存在的其他错误
 		panic(fmt.Errorf("failed to read %s", err.Error()))
 	} else { //存在，并且没有错误，用文件转换为keyJson
-		err = json.Unmarshal(keysfile, &keyJson)
+		scryptIdentity, err := age.NewScryptIdentity(password)
+		if err != nil {
+			panic(fmt.Errorf("failed to NewScryptIdentity"))
+		}
+		kfbuf := bytes.NewBuffer(keysfile)
+		out := bytes.NewBuffer([]byte{})
+		err = Decrypt([]age.Identity{scryptIdentity}, kfbuf, out)
+		if err != nil {
+			panic(fmt.Errorf("failed to password decrypt"))
+		}
+
+		err = json.Unmarshal(out.Bytes(), &keyJson)
 		if err != nil {
 			panic(fmt.Errorf("failed to Unmarshal %s", err.Error()))
 		}
 	}
 
-	key.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
+	secretKeys = SecretKeys{}
+	secretKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
 	if err != nil {
 		panic(fmt.Errorf("failed to read key Recipient %s", err.Error()))
 	}
@@ -57,10 +85,10 @@ func GetAge() (key SecretKeys) {
 		if err != nil {
 			panic(fmt.Errorf("failed to read identities %s", err.Error()))
 		}
-		key.Identities = append(key.Identities, id)
+		secretKeys.Identities = append(secretKeys.Identities, id)
 	}
 
-	return
+	return secretKeys
 
 }
 
@@ -118,19 +146,7 @@ func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 }
 
 // NewSecretKey 会保留原来的私钥，新增一对公私钥
-func NewSecretKey() (key SecretKeys, err error) {
-	//从文件读取
-	keysfile, err := os.ReadFile(keysFile)
-	if err != nil {
-		return
-	}
-	keyJson := keyJson{}
-
-	//转换为keyJson
-	err = json.Unmarshal(keysfile, &keyJson)
-	if err != nil {
-		panic(fmt.Errorf("failed to Unmarshal %s", err.Error()))
-	}
+func NewSecretKey(passwordtoEncrypt string) (SecretKeys, error) {
 
 	//生成新的
 	identity, err := age.GenerateX25519Identity()
@@ -138,29 +154,36 @@ func NewSecretKey() (key SecretKeys, err error) {
 		panic(fmt.Errorf("failed to spawn age indetity: %s", err))
 	}
 
-	//保存到keyJson中，并从新写入到keyfile
-	keyJson.Identities = append(keyJson.Identities, identity.String())
-	keyJson.Recipient = identity.Recipient().String()
+	secretKeys.Recipient = identity.Recipient()
+	secretKeys.Identities = append(secretKeys.Identities, identity)
 
-	data, err := json.Marshal(keyJson)
-	if err != nil {
-		return
+	keyjson := keyJson{}
+	keyjson.Recipient = secretKeys.Recipient.(*age.X25519Recipient).String()
+	for _, s := range secretKeys.Identities {
+		keyjson.Identities = append(keyjson.Identities, s.(*age.X25519Identity).String())
 	}
+
+	data, err := json.Marshal(keyjson)
+	if err != nil {
+		return secretKeys, err
+	}
+
+	scryptRecipient, err := age.NewScryptRecipient(passwordtoEncrypt)
+	if err != nil {
+		panic(fmt.Errorf("failed to NewScryptRecipient"))
+	}
+
+	kfbuf := bytes.NewBuffer(data)
+	out := bytes.NewBuffer([]byte{})
+	err = Encrypt([]age.Recipient{scryptRecipient}, kfbuf, out)
+	if err != nil {
+		panic(fmt.Errorf("failed to password encrypt"))
+	}
+
 	err = os.WriteFile(keysFile, data, 0644)
 	if err != nil {
-		return
+		return secretKeys, err
 	}
 
-	key.Recipient = identity.Recipient()
-
-	for _, s := range keyJson.Identities {
-		var id *age.X25519Identity
-		id, err = age.ParseX25519Identity(s)
-		if err != nil {
-			return
-		}
-		key.Identities = append(key.Identities, id)
-	}
-
-	return
+	return secretKeys, err
 }
