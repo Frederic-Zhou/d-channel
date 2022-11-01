@@ -39,15 +39,16 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 
 	router.GET("/ipns/:name/*path", ipnsHandler)                 //
 	router.GET("/ipfs/:cid/*path", ipfsHandler)                  //
-	router.POST("/publish", publishHandler)                      //
-	router.POST("/addipfskey", addIpfsKeyHandler)                //
-	router.GET("/listipfskey", listIpfsKeyHandler)               //
-	router.POST("/newsecretkey", newSecretKeyHandler)            //
-	router.POST("/getsecretkey", getSecretKeyHandler)            //
 	router.GET("/getsecretrecipient", getSecretRecipientHandler) //
 	router.GET("/getlocalstore", getLocalStoreHandler)           //
-	router.POST("/followname", followNameHandler)                //
-	router.POST("/addrecipient", addRecipientHandler)            //
+	router.GET("/listipfskey", listIpfsKeyHandler)               //
+
+	router.POST("/publish", publishHandler)           //
+	router.POST("/newipfskey", newIpfsKeyHandler)     //
+	router.POST("/newsecretkey", newSecretKeyHandler) //
+	router.POST("/getsecretkey", getSecretKeyHandler) //
+	router.POST("/follow", followHandler)             //
+	router.POST("/addrecipient", addRecipientHandler) //
 
 	router.GET("/index", indexHandler)
 
@@ -120,6 +121,13 @@ func ipfsHandler(c *gin.Context) {
 }
 
 func publishHandler(c *gin.Context) {
+
+	/// --- 0. 判断是否提取密钥文件
+	if SKeys == nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
+		return
+	}
+
 	/// --- 1. 定义一个files.Nodes map,用于上传到IPFS网络
 	postMap := map[string]files.Node{}
 	//从请求中提取出请求内容
@@ -166,7 +174,7 @@ func publishHandler(c *gin.Context) {
 	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
-	ipfskey, err := getIpfsKey(postform.Name)
+	ipfskey, err := getIpfsKey(postform.KeyName)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
 		return
@@ -251,7 +259,7 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 }
 
 // 新增IPFS key，也就是新增一个IPNS
-func addIpfsKeyHandler(c *gin.Context) {
+func newIpfsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
 	name := c.DefaultPostForm("name", "")
 	key, err := IpfsAPI.Key().Generate(context.Background(), name)
@@ -301,6 +309,10 @@ func getSecretKeyHandler(c *gin.Context) {
 
 // 获得用于加密的公钥
 func getSecretRecipientHandler(c *gin.Context) {
+	if SKeys != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
+		return
+	}
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
@@ -310,15 +322,15 @@ func getLocalStoreHandler(c *gin.Context) {
 }
 
 // 订阅其他人的IPNS name
-func followNameHandler(c *gin.Context) {
-	aka := c.DefaultPostForm("aka", "")
+func followHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
-	if aka == "" && name == "" {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null aka or name"))
+	addr := c.DefaultPostForm("addr", "")
+	if addr == "" && name == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null addr or name"))
 		return
 	}
 
-	ls, err := AddSubName(aka, name)
+	ls, err := AddSubName(name, addr)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -328,14 +340,14 @@ func followNameHandler(c *gin.Context) {
 
 // 添加其他人的Recipient
 func addRecipientHandler(c *gin.Context) {
-	aka := c.DefaultPostForm("aka", "")
+	name := c.DefaultPostForm("name", "")
 	recipient := c.DefaultPostForm("recipient", "")
-	if aka == "" && recipient == "" {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null aka or recipient"))
+	if name == "" && recipient == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null name or recipient"))
 		return
 	}
 
-	ls, err := AddRecipient(aka, recipient)
+	ls, err := AddRecipient(name, recipient)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -385,7 +397,7 @@ type postForm struct {
 	post                            //save to post.json
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
-	Name    string                  `json:"-" form:"name"`    //which key to publish
+	KeyName string                  `json:"-" form:"keyname"` //which key to publish
 }
 
 // 主内容对象
