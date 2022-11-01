@@ -21,17 +21,21 @@ import (
 
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
-var SKeys SecretKeys
+var SKeys *SecretKeys
 
 const indexFile = "post.json"
 const metaFile = "meta.json"
 
-func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, skeys SecretKeys) {
+func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	IpfsAPI = ipfsAPI
 	IpfsNode = ipfsNode
-	SKeys = skeys
 
 	router := gin.Default()
+
+	//设置静态文件
+	router.Static("/asset", "./asset")
+	//设置模板文件地址
+	router.LoadHTMLGlob("views/**/*")
 
 	router.GET("/ipns/:name/*path", ipnsHandler)
 	router.GET("/ipfs/:cid/*path", ipfsHandler)
@@ -39,17 +43,22 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, skeys SecretKeys) 
 	router.POST("/addipfskey", addIpfsKeyHandler)
 	router.GET("/listipfskey", listIpfsKeyHandler)
 	router.POST("/newsecretkey", newSecretKeyHandler)
-	router.GET("/getsecretkey", getSecretKeyHandler)
+	router.POST("/getsecretkey", getSecretKeyHandler)
+	router.GET("/getsecretrecipient", getSecretRecipientHandler)
+
+	router.GET("/localstore", localstoreHandler)
+	router.GET("/followname", followNameHandler)
+	router.GET("/addrecipient", addRecipientHandler)
+
 	router.GET("/index", indexHandler)
 
-	router.Run(":8088")
+	router.Run(addr)
 }
 
+// 解析ipns
 func ipnsHandler(c *gin.Context) {
 	name := c.Param("name")
 	fpath := c.Param("path")
-
-	log.Println("fullpath ", name+fpath)
 
 	fullPath, err := IpfsAPI.Name().Resolve(context.Background(), name+fpath)
 
@@ -64,9 +73,10 @@ func ipnsHandler(c *gin.Context) {
 	if err != nil {
 		pin = err.Error()
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, pin))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": fullPath.String(), "pin": pin}))
 }
 
+// 获得ipfs数据
 func ipfsHandler(c *gin.Context) {
 	cid := c.Param("cid")
 	fpath := c.Param("path")
@@ -111,10 +121,8 @@ func ipfsHandler(c *gin.Context) {
 }
 
 func publishHandler(c *gin.Context) {
-	log.Println("publish start")
 	/// --- 1. 定义一个files.Nodes map,用于上传到IPFS网络
 	postMap := map[string]files.Node{}
-
 	//从请求中提取出请求内容
 	var postform postForm
 	err := c.ShouldBind(&postform)
@@ -124,7 +132,6 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 2. 获得组织加密公钥
-
 	//如果postform.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	tos := []age.Recipient{}
 	if len(postform.To) > 0 {
@@ -139,7 +146,6 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
-	log.Println("Attachments start")
 	err = uploadFiles(&postform, postMap, tos)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
@@ -158,12 +164,9 @@ func publishHandler(c *gin.Context) {
 		}
 		data = o.Bytes()
 	}
-
 	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
-	log.Println("get last cid start")
-
 	ipfskey, err := getIpfsKey(postform.KeyName)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
@@ -181,7 +184,6 @@ func publishHandler(c *gin.Context) {
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 
 	/// --- 7. 将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
-	log.Println("add to ipfs start")
 	cid, err := IpfsAPI.Unixfs().Add(context.Background(), files.NewMapDirectory(postMap))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("add err: %s", err.Error())))
@@ -189,10 +191,8 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 8. 发布新的cid到self IPNS
-	log.Println("publishing name start")
 	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipfskey.Name()))
 	if err != nil {
-		log.Println("publish error", err)
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
 		return
 	}
@@ -289,8 +289,18 @@ func newSecretKeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
-// 获得用于加密的公钥
 func getSecretKeyHandler(c *gin.Context) {
+	var err error
+	SKeys, err = GetSecretKey(c.DefaultPostForm("password", ""))
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, ReadStore()))
+}
+
+// 获得用于加密的公钥
+func getSecretRecipientHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
 }
 
@@ -300,7 +310,7 @@ func localstoreHandler(c *gin.Context) {
 }
 
 // 订阅其他人的IPNS name
-func subNameHandler(c *gin.Context) {
+func followNameHandler(c *gin.Context) {
 	aka := c.DefaultPostForm("aka", "")
 	name := c.DefaultPostForm("name", "")
 	if aka == "" && name == "" {

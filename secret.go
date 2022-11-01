@@ -14,9 +14,9 @@ import (
 
 const keysFile = "./secretkeys.json"
 
-var secretKeys SecretKeys
+var secretKeys *SecretKeys
 
-func GetAge(password string) SecretKeys {
+func GetSecretKey(password string) (*SecretKeys, error) {
 
 	//从文件中读取key
 	//如果文件不存在，创建
@@ -26,7 +26,7 @@ func GetAge(password string) SecretKeys {
 	if os.IsNotExist(err) { //如果不存在错误，创建新key，并写入到keyJson
 		identity, err := age.GenerateX25519Identity()
 		if err != nil {
-			panic(fmt.Errorf("failed to spawn age indetity: %s", err))
+			return nil, fmt.Errorf("failed to spawn age indetity: %s", err.Error())
 		}
 
 		keyJson.Identities = []string{identity.String()}
@@ -34,61 +34,61 @@ func GetAge(password string) SecretKeys {
 
 		data, err := json.Marshal(keyJson)
 		if err != nil {
-			panic(fmt.Errorf("failed to json format keys"))
+			return nil, fmt.Errorf("failed to json format keys %s", err.Error())
 		}
 
 		scryptRecipient, err := age.NewScryptRecipient(password)
 		if err != nil {
-			panic(fmt.Errorf("failed to NewScryptRecipient"))
+			return nil, fmt.Errorf("failed to NewScryptRecipient %s", err.Error())
 		}
 
 		kfbuf := bytes.NewBuffer(data)
 		out := bytes.NewBuffer([]byte{})
 		err = Encrypt([]age.Recipient{scryptRecipient}, kfbuf, out)
 		if err != nil {
-			panic(fmt.Errorf("failed to password encrypt"))
+			return nil, fmt.Errorf("failed to password encrypt %s", err.Error())
 		}
 
 		err = os.WriteFile(keysFile, out.Bytes(), 0644)
 		if err != nil {
-			panic(fmt.Errorf("failed to write key store"))
+			return nil, fmt.Errorf("failed to write key store %s", err.Error())
 		}
 
 	} else if err != nil { //如果是非不存在的其他错误
-		panic(fmt.Errorf("failed to read %s", err.Error()))
+		return nil, fmt.Errorf("failed to read %s", err.Error())
 	} else { //存在，并且没有错误，用文件转换为keyJson
 		scryptIdentity, err := age.NewScryptIdentity(password)
 		if err != nil {
-			panic(fmt.Errorf("failed to NewScryptIdentity"))
+			return nil, fmt.Errorf("failed to NewScryptIdentity %s", err.Error())
 		}
 		kfbuf := bytes.NewBuffer(keysfile)
 		out := bytes.NewBuffer([]byte{})
 		err = Decrypt([]age.Identity{scryptIdentity}, kfbuf, out)
 		if err != nil {
-			panic(fmt.Errorf("failed to password decrypt"))
+			return nil, fmt.Errorf("failed to password decrypt %s", err.Error())
 		}
 
 		err = json.Unmarshal(out.Bytes(), &keyJson)
 		if err != nil {
-			panic(fmt.Errorf("failed to Unmarshal %s", err.Error()))
+			return nil, fmt.Errorf("failed to Unmarshal %s", err.Error())
 		}
 	}
 
-	secretKeys = SecretKeys{}
+	secretKeys = &SecretKeys{}
 	secretKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
 	if err != nil {
-		panic(fmt.Errorf("failed to read key Recipient %s", err.Error()))
+		return nil, fmt.Errorf("failed to read key Recipient %s", err.Error())
 	}
 
 	for _, s := range keyJson.Identities {
 		id, err := age.ParseX25519Identity(s)
 		if err != nil {
-			panic(fmt.Errorf("failed to read identities %s", err.Error()))
+			return nil, fmt.Errorf("failed to read identities %s", err.Error())
 		}
 		secretKeys.Identities = append(secretKeys.Identities, id)
 	}
 
-	return secretKeys
+	return secretKeys, nil
 
 }
 
@@ -146,12 +146,12 @@ func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 }
 
 // NewSecretKey 会保留原来的私钥，新增一对公私钥
-func NewSecretKey(passwordtoEncrypt string) (SecretKeys, error) {
+func NewSecretKey(passwordtoEncrypt string) (*SecretKeys, error) {
 
 	//生成新的
 	identity, err := age.GenerateX25519Identity()
 	if err != nil {
-		panic(fmt.Errorf("failed to spawn age indetity: %s", err))
+		return nil, fmt.Errorf("failed to spawn age indetity: %s", err.Error())
 	}
 
 	secretKeys.Recipient = identity.Recipient()
@@ -165,24 +165,24 @@ func NewSecretKey(passwordtoEncrypt string) (SecretKeys, error) {
 
 	data, err := json.Marshal(keyjson)
 	if err != nil {
-		return secretKeys, err
+		return nil, err
 	}
 
 	scryptRecipient, err := age.NewScryptRecipient(passwordtoEncrypt)
 	if err != nil {
-		panic(fmt.Errorf("failed to NewScryptRecipient"))
+		return nil, fmt.Errorf("failed to NewScryptRecipient %s", err.Error())
 	}
 
 	kfbuf := bytes.NewBuffer(data)
 	out := bytes.NewBuffer([]byte{})
 	err = Encrypt([]age.Recipient{scryptRecipient}, kfbuf, out)
 	if err != nil {
-		panic(fmt.Errorf("failed to password encrypt"))
+		return nil, fmt.Errorf("failed to password encrypt %s", err.Error())
 	}
 
 	err = os.WriteFile(keysFile, data, 0644)
 	if err != nil {
-		return secretKeys, err
+		return nil, err
 	}
 
 	return secretKeys, err
