@@ -12,7 +12,7 @@ import (
 	"filippo.io/age/armor"
 )
 
-const keysFile = "./secretkeys.json"
+const keysFile = "./secretkeys.key"
 
 var secretKeys *SecretKeys
 
@@ -146,7 +146,23 @@ func Decrypt(identities []age.Identity, in io.Reader, out io.Writer) error {
 }
 
 // NewSecretKey 会保留原来的私钥，新增一对公私钥
-func NewSecretKey(passwordtoEncrypt string) (*SecretKeys, error) {
+func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
+
+	//检查老密码对不对
+	scryptIdentity, err := age.NewScryptIdentity(oldpassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to NewScryptIdentity %s", err.Error())
+	}
+	keysfile, err := os.ReadFile(keysFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key file %s", err.Error())
+	}
+	kfbuf := bytes.NewBuffer(keysfile)
+	out := bytes.NewBuffer([]byte{})
+	err = Decrypt([]age.Identity{scryptIdentity}, kfbuf, out)
+	if err != nil {
+		return nil, fmt.Errorf("failed to password decrypt %s", err.Error())
+	}
 
 	//生成新的
 	identity, err := age.GenerateX25519Identity()
@@ -173,14 +189,14 @@ func NewSecretKey(passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, fmt.Errorf("failed to NewScryptRecipient %s", err.Error())
 	}
 
-	kfbuf := bytes.NewBuffer(data)
-	out := bytes.NewBuffer([]byte{})
+	kfbuf = bytes.NewBuffer(data)
+	out = bytes.NewBuffer([]byte{})
 	err = Encrypt([]age.Recipient{scryptRecipient}, kfbuf, out)
 	if err != nil {
 		return nil, fmt.Errorf("failed to password encrypt %s", err.Error())
 	}
 
-	err = os.WriteFile(keysFile, data, 0644)
+	err = os.WriteFile(keysFile, out.Bytes(), 0644)
 	if err != nil {
 		return nil, err
 	}
