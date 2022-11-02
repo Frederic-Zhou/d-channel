@@ -9,6 +9,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"filippo.io/age"
 	"github.com/gin-gonic/gin"
@@ -372,20 +373,43 @@ func addRecipientHandler(c *gin.Context) {
 
 func listenFollowedsHandler(c *gin.Context) {
 
-	updates := [][]string{}
-	for _, a := range localstore.Names {
-		path, err := IpfsAPI.Name().Resolve(c, a.Addr)
-		if err != nil {
-			continue
-		}
-		if a.Latest != path.String() {
-			a.Latest = path.String()
-			updates = append(updates, []string{a.Name, a.Addr, a.Latest})
-		}
-	}
-	_ = SaveStore()
+	chanStream := make(chan string, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func(ctx context.Context) {
+		defer close(chanStream)
+		for {
+			select {
+			case <-time.After(5 * time.Second):
+				updates := [][]string{}
+				for _, a := range localstore.Names {
+					path, err := IpfsAPI.Name().Resolve(c, a.Addr)
+					if err != nil {
+						continue
+					}
+					if a.Latest != path.String() {
+						a.Latest = path.String()
+						updates = append(updates, []string{a.Name, a.Addr, a.Latest})
+					}
+				}
+				_ = SaveStore()
 
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, updates))
+				u, _ := json.Marshal(updates)
+				chanStream <- string(u)
+			case <-ctx.Done():
+				return
+			}
+
+		}
+	}(ctx)
+
+	c.Stream(func(w io.Writer) bool {
+		if msg, ok := <-chanStream; ok {
+			c.SSEvent("updates", msg)
+			return true
+		}
+		return false
+	})
 
 }
 
