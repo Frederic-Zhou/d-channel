@@ -43,8 +43,9 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	router.GET("/getlocalstore", getLocalStoreHandler)           //
 	router.GET("/listipfskey", listIpfsKeyHandler)               //
 
-	router.POST("/publish", publishHandler)           //
-	router.POST("/newipfskey", newIpfsKeyHandler)     //
+	router.POST("/publish", publishHandler)       //
+	router.POST("/newipfskey", newIpfsKeyHandler) //
+	router.POST("/reomveipfskey", removeIpfsKeyHandler)
 	router.POST("/newsecretkey", newSecretKeyHandler) //
 	router.POST("/getsecretkey", getSecretKeyHandler) //
 	router.POST("/follow", followHandler)             //
@@ -263,6 +264,18 @@ func newIpfsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
 	name := c.DefaultPostForm("name", "")
 	key, err := IpfsAPI.Key().Generate(context.Background(), name)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, key.Path().String()))
+}
+
+// 移除ipfs key
+func removeIpfsKeyHandler(c *gin.Context) {
+	name := c.DefaultPostForm("name", "")
+	key, err := IpfsAPI.Key().Remove(context.Background(), name)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
