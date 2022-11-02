@@ -51,7 +51,7 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	router.POST("/getsecretkey", getSecretKeyHandler) //
 	router.POST("/follow", followHandler)             //
 	router.POST("/addrecipient", addRecipientHandler) //
-	router.POST("/listenfolloweds", listenFollowedsHandler)
+	router.GET("/listenfolloweds", listenFollowedsHandler)
 
 	router.GET("/index", indexHandler)
 
