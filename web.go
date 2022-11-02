@@ -9,7 +9,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"time"
 
 	"filippo.io/age"
 	"github.com/gin-gonic/gin"
@@ -373,27 +372,20 @@ func addRecipientHandler(c *gin.Context) {
 
 func listenFollowedsHandler(c *gin.Context) {
 
-	for {
-		updates := [][]string{}
-		for _, a := range localstore.Names {
-			path, err := IpfsAPI.Name().Resolve(c, a.Addr)
-			if err != nil {
-				continue
-			}
-			if a.Latest != path.String() {
-				a.Latest = path.String()
-				updates = append(updates, []string{a.Name, a.Addr, a.Latest})
-			}
+	updates := [][]string{}
+	for _, a := range localstore.Names {
+		path, err := IpfsAPI.Name().Resolve(c, a.Addr)
+		if err != nil {
+			continue
 		}
-		_ = SaveStore()
-
-		c.Stream(func(w io.Writer) bool {
-			u, _ := json.Marshal(updates)
-			w.Write(u)
-			return true
-		})
-		time.Sleep(5 * time.Second)
+		if a.Latest != path.String() {
+			a.Latest = path.String()
+			updates = append(updates, []string{a.Name, a.Addr, a.Latest})
+		}
 	}
+	_ = SaveStore()
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, updates))
 
 }
 
