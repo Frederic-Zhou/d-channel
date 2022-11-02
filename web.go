@@ -9,6 +9,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"filippo.io/age"
 	"github.com/gin-gonic/gin"
@@ -50,6 +51,7 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	router.POST("/getsecretkey", getSecretKeyHandler) //
 	router.POST("/follow", followHandler)             //
 	router.POST("/addrecipient", addRecipientHandler) //
+	router.POST("/listenfolloweds", listenFollowedsHandler)
 
 	router.GET("/index", indexHandler)
 
@@ -343,7 +345,7 @@ func followHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := AddSubName(name, addr)
+	ls, err := AddFollowName(name, addr)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -366,6 +368,32 @@ func addRecipientHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, ls))
+
+}
+
+func listenFollowedsHandler(c *gin.Context) {
+
+	for {
+		updates := [][]string{}
+		for _, a := range localstore.Names {
+			path, err := IpfsAPI.Name().Resolve(c, a.Addr)
+			if err != nil {
+				continue
+			}
+			if a.Latest != path.String() {
+				a.Latest = path.String()
+				updates = append(updates, []string{a.Name, a.Addr, a.Latest})
+			}
+		}
+		_ = SaveStore()
+
+		c.Stream(func(w io.Writer) bool {
+			u, _ := json.Marshal(updates)
+			w.Write(u)
+			return true
+		})
+		time.Sleep(5 * time.Second)
+	}
 
 }
 

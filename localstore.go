@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 )
 
 const localstorePath = "./localstore.json"
@@ -38,21 +39,38 @@ func ReadStore() LocalStore {
 
 }
 
-func AddSubName(aka, name string) (LocalStore, error) {
-	localstore.Names = append(localstore.Names, []string{aka, name})
+var mutex sync.Mutex
+
+func SaveStore() error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	lsf, _ := json.Marshal(localstore)
-	err := os.WriteFile(localstorePath, lsf, 0644)
-	return localstore, err
+	return os.WriteFile(localstorePath, lsf, 0644)
+
 }
 
-func AddRecipient(aka, recipient string) (LocalStore, error) {
-	localstore.Recipients = append(localstore.Recipients, []string{aka, recipient})
-	lsf, _ := json.Marshal(localstore)
-	err := os.WriteFile(localstorePath, lsf, 0644)
-	return localstore, err
+func AddFollowName(name, addr string) (LocalStore, error) {
+	localstore.Names = append(localstore.Names, ipnsname{Name: name, Addr: addr})
+	return localstore, SaveStore()
+}
+
+func AddRecipient(name, recipient string) (LocalStore, error) {
+	localstore.Recipients = append(localstore.Recipients, otherrecipient{name, recipient})
+	return localstore, SaveStore()
 }
 
 type LocalStore struct {
-	Names      [][]string `json:"names"`
-	Recipients [][]string `json:"recipients"`
+	Names      []ipnsname       `json:"names"`
+	Recipients []otherrecipient `json:"recipients"`
+}
+
+type ipnsname struct {
+	Name   string `json:"name"`
+	Addr   string `json:"addr"`
+	Latest string `json:"latest"`
+}
+
+type otherrecipient struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
