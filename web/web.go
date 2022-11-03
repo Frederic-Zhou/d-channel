@@ -1,8 +1,9 @@
-package main
+package web
 
 import (
 	"bytes"
 	"context"
+	"d-channel/secret"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"time"
+
+	"d-channel/localstore"
 
 	"filippo.io/age"
 	"github.com/gin-gonic/gin"
@@ -22,12 +25,13 @@ import (
 
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
-var SKeys *SecretKeys
+var SKeys *secret.SecretKeys
+var store localstore.LocalStore
 
 const indexFile = "post.json"
 const metaFile = "meta.json"
 
-func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
+func Start(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	IpfsAPI = ipfsAPI
 	IpfsNode = ipfsNode
 
@@ -112,7 +116,7 @@ func ipfsHandler(c *gin.Context) {
 	//在这里解密
 	//如果不是密闻，Decrypt会自动判断，返回原始数据
 	o := bytes.NewBuffer([]byte{})
-	err = Decrypt(SKeys.Identities, f, o)
+	err = secret.Decrypt(SKeys.Identities, f, o)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("decrypt err %s", err.Error())))
 		return
@@ -167,7 +171,7 @@ func publishHandler(c *gin.Context) {
 	if len(tos) > 0 {
 		f := bytes.NewBuffer(data)
 		o := bytes.NewBuffer([]byte{})
-		err = Encrypt(tos, f, o)
+		err = secret.Encrypt(tos, f, o)
 		if err != nil {
 			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("encrypt post err: %s", err.Error())))
 			return
@@ -240,7 +244,7 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 		if len(postform.To) > 0 {
 
 			o := bytes.NewBuffer([]byte{})
-			err = Encrypt(tos, f, o)
+			err = secret.Encrypt(tos, f, o)
 			if err != nil {
 				return fmt.Errorf("encrypt file err: %s", err.Error())
 			}
@@ -304,7 +308,7 @@ func listIpfsKeyHandler(c *gin.Context) {
 // 使用一个新的密钥，会保留原来的私钥，新增一对公私钥，返回新的公钥
 func newSecretKeyHandler(c *gin.Context) {
 	var err error
-	SKeys, err = NewSecretKey(c.DefaultPostForm("oldpassword", ""), c.DefaultPostForm("password", ""))
+	SKeys, err = secret.NewSecretKey(c.DefaultPostForm("oldpassword", ""), c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -314,7 +318,7 @@ func newSecretKeyHandler(c *gin.Context) {
 
 func getSecretKeyHandler(c *gin.Context) {
 	var err error
-	SKeys, err = GetSecretKey(c.DefaultPostForm("password", ""))
+	SKeys, err = secret.GetSecretKey(c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -333,7 +337,8 @@ func getSecretRecipientHandler(c *gin.Context) {
 
 // 获得本地存储
 func getLocalStoreHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, ReadStore()))
+	store = localstore.ReadStore()
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, store))
 }
 
 // 订阅其他人的IPNS name
@@ -345,7 +350,7 @@ func followHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := AddFollowName(name, addr)
+	ls, err := localstore.AddFollowName(name, addr)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -362,7 +367,7 @@ func addRecipientHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := AddRecipient(name, recipient)
+	ls, err := localstore.AddRecipient(name, recipient)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -382,7 +387,7 @@ func listenFollowedsHandler(c *gin.Context) {
 			select {
 			case <-time.After(5 * time.Second):
 				updates := [][]string{}
-				for _, a := range localstore.Names {
+				for _, a := range store.Names {
 					path, err := IpfsAPI.Name().Resolve(c, a.Addr)
 					if err != nil {
 						continue
@@ -392,7 +397,7 @@ func listenFollowedsHandler(c *gin.Context) {
 						updates = append(updates, []string{a.Name, a.Addr, a.Latest})
 					}
 				}
-				_ = SaveStore()
+				_ = localstore.SaveStore()
 
 				u, _ := json.Marshal(updates)
 				chanStream <- string(u)

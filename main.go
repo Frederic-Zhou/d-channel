@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"d-channel/ipfsnode"
+	"d-channel/web"
 	"flag"
 )
 
@@ -16,8 +18,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ipfsAPI, ipfsNode := StartNode(ctx)
+	ipfsAPI, ipfsNode := ipfsnode.Start(ctx)
 
-	StartWeb(ipfsAPI, ipfsNode, *addr)
+	web.Start(ipfsAPI, ipfsNode, *addr)
 
 }

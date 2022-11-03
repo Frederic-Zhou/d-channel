@@ -1,4 +1,4 @@
-package main
+package ipfsnode
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	// ldformat "github.com/ipfs/go-ipld-format"
 )
 
-func StartNode(ctx context.Context) (ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode) {
+func Start(ctx context.Context) (ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
 	ipfsAPI, ipfsNode, err = spawn(ctx)
