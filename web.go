@@ -36,7 +36,7 @@ func StartWeb(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	//设置静态文件
 	router.Static("/asset", "./asset")
 	//设置模板文件地址
-	// router.LoadHTMLGlob("views/*")
+	router.LoadHTMLGlob("views/*")
 
 	router.GET("/ipns/:name/*path", ipnsHandler)                 //
 	router.GET("/ipfs/:cid/*path", ipfsHandler)                  //
