@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const localstorePath = "./localstore.json"
+const localstorePath = "./repo/localstore.json"
 
 // 本地存储主要保存订阅的IPNS name和Receipient
 var localstore LocalStore

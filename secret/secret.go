@@ -12,7 +12,7 @@ import (
 	"filippo.io/age/armor"
 )
 
-const keysFile = "./secretkeys.key"
+const keysFile = "./repo/secretkeys.key"
 
 var secretKeys *SecretKeys
 
