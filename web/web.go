@@ -145,7 +145,23 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
-	/// --- 2. 获得组织加密公钥
+	/// --- 2. 解析出self发布的最新的cid，并写入到post中的next字段
+	ipfskey, err := getIpfsKey(postform.KeyName)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
+		return
+	}
+
+	if !postform.Init {
+		next, err := IpfsAPI.Name().Resolve(context.Background(), ipfskey.Path().String())
+		if err != nil {
+			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
+			return
+		}
+		postform.Next = next.String()
+	}
+
+	/// --- 3. 获得组织加密公钥
 	//如果postform.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	tos := []age.Recipient{}
 	if len(postform.To) > 0 {
@@ -159,14 +175,14 @@ func publishHandler(c *gin.Context) {
 		}
 	}
 
-	/// --- 3. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
+	/// --- 4. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
 	err = uploadFiles(&postform, postMap, tos)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
 
-	/// --- 4. 对post对象加密（如果不需要加密则保存原始数据）
+	/// --- 5. 对post对象加密（如果不需要加密则保存原始数据）
 	data, _ := json.Marshal(postform.post)
 	if len(tos) > 0 {
 		f := bytes.NewBuffer(data)
@@ -179,19 +195,6 @@ func publishHandler(c *gin.Context) {
 		data = o.Bytes()
 	}
 	postMap[indexFile] = files.NewBytesFile(data)
-
-	/// --- 5. 解析出self发布的最新的cid，并写入到post中的next字段
-	ipfskey, err := getIpfsKey(postform.KeyName)
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
-		return
-	}
-	next, err := IpfsAPI.Name().Resolve(context.Background(), ipfskey.Path().String())
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
-		return
-	}
-	postform.Next = next.String()
 
 	/// --- 6. 将meta对象，重新序列化为json，并作为meta.json文件保存
 	metaJson, _ := json.Marshal(postform.meta)
@@ -460,6 +463,7 @@ type postForm struct {
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
 	KeyName string                  `json:"-" form:"keyname"` //which key to publish
+	Init    bool                    `json:"-" form:"init"`
 }
 
 // 主内容对象
