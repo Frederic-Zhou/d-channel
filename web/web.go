@@ -74,13 +74,7 @@ func ipnsHandler(c *gin.Context) {
 		return
 	}
 
-	//pin
-	pin := "success"
-	err = IpfsAPI.Pin().Add(context.Background(), fullPath)
-	if err != nil {
-		pin = err.Error()
-	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": fullPath.String(), "pin": pin}))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": fullPath.String()}))
 }
 
 // 获得ipfs数据
@@ -93,7 +87,10 @@ func ipfsHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
 		return
 	}
-	defer nd.Close()
+	defer func() {
+		nd.Close()
+		_ = IpfsAPI.Pin().Add(context.Background(), path.New(cid+fpath))
+	}()
 
 	fs := []string{}
 	files.Walk(nd, func(fpath string, nd files.Node) error {
