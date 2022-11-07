@@ -328,7 +328,7 @@ func getSecretKeyHandler(c *gin.Context) {
 
 // 获得用于加密的公钥
 func getSecretRecipientHandler(c *gin.Context) {
-	if SKeys != nil {
+	if SKeys == nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
 		return
 	}
