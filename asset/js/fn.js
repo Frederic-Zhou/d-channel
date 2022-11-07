@@ -28,6 +28,12 @@ function jqspc(str){
 	}
 	return str;
 }
+function runcb(fn,tm){
+	if(typeof(fn)=='function'){
+		if(!tm){tm=0;}
+		setTimeout(function(){fn()},tm);
+	}
+}
 function msgok(v,fn){layer.msg(v,{icon:1});runcb(fn,2000);}
 function msgerr(v,fn){layer.msg(v,{icon:2,anim:6});runcb(fn,2000);}
 function msgcry(v,fn){layer.msg(v,{icon:5,anim:6});runcb(fn,2000);}
@@ -35,7 +41,8 @@ function alertico(v,ico,fn){layer.alert(v,{icon:ico||'',anim:(ico==1)?0:6},funct
 function alertok(v,fn){alertico(v,1,fn);}
 function alerterr(v,fn){alertico(v,2,fn);}
 function alertcry(v,fn){alertico(v,5,fn);}
-function loading(t){return layer.open({type:2,content:t});}
+function loading(){return layer.open({type:3});}
+function hideload(){layer.closeAll('loading');}
 function layconfirm(str,fn1,fn2){
 	layer.confirm(str,{icon:3,title:'询问'},function(idx){
 		layer.close(idx);

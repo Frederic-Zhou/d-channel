@@ -10,7 +10,7 @@
 
 /*flex 等宽*/
 .flex{clear:both;position:relative;display:flex;flex-wrap:wrap;}
-.col,.wz1,.wz2,.wz3,.wz4,.wz5,.wz6,.wz7,.wz8,.wz9,.wz10,.wz11,.wz12,.w1,.w2,.w3,.w4,.w5,.w6,.w7,.w8,.w9,.w10,.w11,.w12{position:relative;width:100%;padding-right:7.5px;padding-left:7.5px;}
+.col,.wz1,.wz2,.wz3,.wz4,.wz5,.wz6,.wz7,.wz8,.wz9,.wz10,.wz11,.wz12,.w1,.w2,.w3,.w4,.w5,.w6,.w7,.w8,.w9,.w10,.w11,.w12{position:relative;width:100%;}
 .col{flex-basis:0;flex-grow:1;max-width:100%;}
 .wz1{flex:0 0 100%;max-width:100%;}
 .wz2{flex:0 0 50%;max-width:50%;}

@@ -15,11 +15,192 @@
 </head>
 
 <body>
+<div class="w3-panel w3-blue w3-card-4 mt0">
+	<p>这里是一段提示文字.</p>
+</div>
+
+<div class="wrap mb25">
+<div class="w3-border">
+	<div class="w3-container w3-blue">
+		<h2>发表内容</h2>
+	</div>
+	<form class="w3-container" id="publish_form" onsubmit="publish_content();return false;">
+		<div class="w3-section">
+			<label>ipfs 键名</label>
+			<input class="w3-input" name="keyname" type="text" />
+		</div>
+		<div class="w3-section">
+			<label>发送目标</label>
+			<input class="w3-input" name="to" type="text" />
+		</div>
+		<div class="w3-section">
+			<label>内容类型</label>
+			<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
+			<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
+		</div>
+		<div class="w3-section">
+			<label>内容</label>
+			<textarea class="w3-input" name="body"></textarea>
+		</div>
+		<div class="w3-section">
+			<label>附件上传</label>
+			<input type="file" name="uploads" id="upfile" />
+			<input type="hidden" name="init" value="false" />
+		</div>
+		<div class="w3-section">
+			<button type="submit" class="w3-btn w3-blue">发表内容</button>
+		</div>
+	</form>
+</div>
+</div>
 
 
+<div class="wrap">
+<div class="w3-border">
+	<div class="w3-container w3-blue">
+		<h2>获取ipns/ipfs内容</h2>
+	</div>
+	<form class="w3-container" onsubmit="get_content(this);return false;">
+		<div class="w3-section">
+			<label>KEY</label>
+			<input class="w3-input" name="hash" type="text" />
+		</div>
+		<div class="w3-section">
+			<label><input type="radio" class="w3-radio" name="type" value="ipns">IPNS</label>
+			<label><input type="radio" class="w3-radio" name="type" value="ipfs">IPFS</label>
+			<button type="submit" class="w3-btn w3-blue">GET</button>
+		</div>
+	</form>
+</div>
+</div>
 
-	<script type="text/javascript" src="/asset/js/fn.js"></script>
+<div class="wrap mt20">
+	<div class="row col-sp12">
+		<div class="w6">
+			<div class="w3-teal p5">ipfskey</div>
+			<ul class="w3-ul w3-border" id="listipfskey"></ul>
+		</div>
+		
+		<div class="w6">
+			<div class="w3-teal p5">localstore</div>
+			<ul class="w3-ul w3-border" id="localstore"></ul>
+		</div>
+	</div>
+</div>
+
+
 </body>
 
+
+
+
+<!-- The Modal -->
+<div id="pwd_dialog" class="w3-modal">
+	<div class="w3-modal-content pt35 pb25">
+		<div class="w3-container">
+			<span onclick="$('id01').hide()" class="w3-button w3-display-topright">&times;</span>
+			<form class="w3-container" onsubmit="set_local_pwd(this);return false;">
+				<p><label>Local Password</label>
+				<input class="w3-input" type="password" name="password" /></p>
+				<button type="submit" class="w3-btn w3-blue">Set Password</button>
+			</form>
+		</div>
+	</div>
+</div>
+
+
+<script type="text/javascript" src="/asset/layer/layer.js"></script>
+<script type="text/javascript" src="/asset/js/fn.js"></script>
+<script type="text/javascript">
+
+function publish_content(){
+	var iptfile=document.getElementById('upfile');
+	var flen=iptfile.files.length;
+	var formdata=new FormData(document.getElementById('publish_form'));
+	if(flen<1){
+		formdata.delete('uploads');
+	}
+	loading();
+	$.ajax({
+		url:'/publish',
+		type:"POST",
+		data:formdata,
+		dataType:'json',
+		processData:false,
+		contentType:false,
+		error:function(){hideload();alerterr('发布失败');},
+		success:function(res){
+			hideload()
+			if(res.code=='1'){
+				
+			}else{
+				alerterr(res.data)
+			}
+		}
+	})
+}
+function get_content(f){
+	var hash=$.trim(f.hash.value);
+	if(!hash){
+		alert('key must not null!');return;
+	}
+	var type=f.type.value;
+	$.get('/'+type+'/'+hash,function(res){
+		
+	},'json')
+}
+
+function list_ipfskey(){
+	$.get('/listipfskey',function(res){
+		if(res.code!='1'){return;}
+		var htm=''
+		$.each(res.data,function(k,v){
+			htm+='<li>'+v[0]+': '+v[1]+'</li>'
+		});
+		$('#listipfskey').html(htm);
+	},'json')
+}
+function list_localstore(){
+	$.get('/getlocalstore',function(res){
+		if(res.code!='1'){return;}
+		var htm=''
+		$.each(res.data,function(k,v){
+			htm+='<li>'+k+': '+v+'</li>'
+		});
+		$('#localstore').html(htm);
+	},'json')
+}
+function init_getkey(){
+	var localkey=sessionStorage.getItem('secretkey');
+	if(!localkey){
+		$('#pwd_dialog').show();
+	}else{
+		list_ipfskey();
+		list_localstore()
+	}
+}
+function set_local_pwd(f){
+	var pwd=$.trim(f.password.value);
+	if(!pwd){
+		alerterr('password must not null!');return;
+	}
+	loading()
+	$.post('/getsecretkey',{'password':pwd},function(res){
+		hideload()
+		if(res.code=='1'){
+			sessionStorage.setItem('secretkey',res.data);
+			$('#pwd_dialog').hide();
+		}else{
+			alerterr(res.data)
+		}
+	},'json');
+}
+$(function(){
+	init_getkey();
+})
+
+
+
+</script>
 </html>
 {{end}}
