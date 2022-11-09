@@ -350,7 +350,7 @@ func followHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := localstore.AddFollowName(name, addr)
+	ls, err := localstore.AddFollow(name, addr)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -362,12 +362,13 @@ func followHandler(c *gin.Context) {
 func addRecipientHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
 	recipient := c.DefaultPostForm("recipient", "")
+	peerPubKey := c.DefaultPostForm("peerpubkey", "")
 	if name == "" && recipient == "" {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null name or recipient"))
 		return
 	}
 
-	ls, err := localstore.AddRecipient(name, recipient)
+	ls, err := localstore.AddPeer(name, recipient, peerPubKey)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -387,7 +388,7 @@ func listenFollowedsHandler(c *gin.Context) {
 			select {
 			case <-time.After(5 * time.Second):
 				updates := [][]string{}
-				for _, a := range store.Names {
+				for _, a := range store.IPNSNames {
 					path, err := IpfsAPI.Name().Resolve(c, a.Addr)
 					if err != nil {
 						continue

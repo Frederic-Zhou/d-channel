@@ -49,19 +49,19 @@ func SaveStore() error {
 
 }
 
-func AddFollowName(name, addr string) (LocalStore, error) {
-	localstore.Names = append(localstore.Names, ipnsname{Name: name, Addr: addr})
+func AddFollow(name, addr string) (LocalStore, error) {
+	localstore.IPNSNames = append(localstore.IPNSNames, ipnsname{Name: name, Addr: addr})
 	return localstore, SaveStore()
 }
 
-func AddRecipient(name, recipient string) (LocalStore, error) {
-	localstore.Recipients = append(localstore.Recipients, otherrecipient{name, recipient})
+func AddPeer(name, recipient, peerPubKey string) (LocalStore, error) {
+	localstore.Peers = append(localstore.Peers, peer{Name: name, Recipient: recipient, PeerPubKey: peerPubKey})
 	return localstore, SaveStore()
 }
 
 type LocalStore struct {
-	Names      []ipnsname       `json:"names"`
-	Recipients []otherrecipient `json:"recipients"`
+	IPNSNames []ipnsname `json:"ipnsnames"`
+	Peers     []peer     `json:"peers"`
 }
 
 type ipnsname struct {
@@ -70,7 +70,8 @@ type ipnsname struct {
 	Latest string `json:"latest"`
 }
 
-type otherrecipient struct {
-	Name string `json:"name"`
-	Key  string `json:"key"`
+type peer struct {
+	Name       string `json:"name"`
+	Recipient  string `json:"recipient"`
+	PeerPubKey string `json:"peerpubkey"`
 }
