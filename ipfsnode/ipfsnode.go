@@ -51,14 +51,11 @@ func Start(ctx context.Context) {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
 	}
 
-	l, err := ListenLocal(ctx, IpfsNode)
+	err = ListenLocal(ctx, IpfsNode)
 	if err != nil {
-		panic(fmt.Errorf("failed to spawn peer node: %s", err))
+		panic(fmt.Errorf("listen local err: %s", err))
 	}
 
-	log.Println("listener:", l.Protocol(), l.ListenAddress(), l.TargetAddress())
-
-	return
 }
 
 // / ------ Setting up the IPFS Repo
@@ -168,7 +165,7 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 }
 
 // / -------
-func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (listener p2p.Listener, err error) {
+func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (err error) {
 
 	var proto = p2pcore.ProtocolID(messageProto)
 
@@ -177,33 +174,36 @@ func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (listener p2p.Lis
 		return
 	}
 
-	listener, err = ipfsnode.P2P.ForwardRemote(ctx, proto, addr, true)
-
-	go func() {
-		log.Println("start listener")
-		if err := listenConnect(ctx, listener.TargetAddress()); err != nil {
-			log.Println(err)
-		}
-	}()
-	return
-
-}
-
-func listenConnect(ctx context.Context, laddr multiaddr.Multiaddr) (err error) {
-
-	listener, err := manet.Listen(laddr)
+	listener, err := ipfsnode.P2P.ForwardRemote(ctx, proto, addr, true)
+	if err != nil {
+		return
+	}
+	mlistener, err := manet.Listen(listener.TargetAddress())
 	if err != nil {
 		return
 	}
 
-	defer listener.Close()
+	go func() {
+		log.Println("start accpet")
+		if err = acceptConnect(ctx, mlistener); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	return
+
+}
+
+func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
+
+	defer mlistener.Close()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			conn, errConn := listener.Accept()
+			conn, errConn := mlistener.Accept()
 			if errConn != nil {
 				log.Println("got a conn but error", errConn)
 				continue
@@ -233,6 +233,12 @@ func readConn(conn manet.Conn) (err error) {
 	}
 
 	log.Println("message:", bf.String())
+
+	// _, err = conn.Write([]byte("ok"))
+	// if err != nil {
+	// 	log.Printf("write from conn failed, err:%v\n", err)
+	// 	return
+	// }
 
 	return localstore.WriteMessage(bf.String())
 }
@@ -276,6 +282,13 @@ func SendMessage(peerID string, message string) (err error) {
 	conn.SetDeadline(time.Now().Add(10 * time.Second))
 	n, err := conn.Write([]byte(message))
 	log.Println("writed:", n)
+
+	// var buf [1024]byte
+	// n, err = conn.Read(buf[:])
+	// if err != nil {
+	// 	return
+	// }
+	// log.Printf("收到服务端回复:%v\n", string(buf[:n]))
 
 	return
 
