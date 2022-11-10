@@ -55,7 +55,7 @@ func Start(ctx context.Context, lport, fport int) {
 	listenLocalAddr = fmt.Sprintf(listenLocalAddr, lport)
 	forwardLocalAddr = fmt.Sprintf(forwardLocalAddr, fport)
 
-	err = ListenLocal(ctx, IpfsNode)
+	err = ListenLocal(ctx)
 	if err != nil {
 		panic(fmt.Errorf("listen local err: %s", err))
 	}
@@ -169,7 +169,7 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 }
 
 // / -------
-func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (err error) {
+func ListenLocal(ctx context.Context) (err error) {
 
 	var proto = p2pcore.ProtocolID(messageProto)
 
@@ -178,7 +178,7 @@ func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (err error) {
 		return
 	}
 
-	listener, err := ipfsnode.P2P.ForwardRemote(ctx, proto, addr, true)
+	listener, err := IpfsNode.P2P.ForwardRemote(ctx, proto, addr, true)
 	if err != nil {
 		return
 	}
@@ -187,12 +187,12 @@ func ListenLocal(ctx context.Context, ipfsnode *core.IpfsNode) (err error) {
 		return
 	}
 
-	go func() {
+	go func(ctx context.Context) {
 		log.Println("start accpet")
 		if err = acceptConnect(ctx, mlistener); err != nil {
 			log.Println(err)
 		}
-	}()
+	}(ctx)
 
 	return
 
@@ -237,12 +237,6 @@ func readConn(conn manet.Conn) (err error) {
 	}
 
 	log.Println("message:", bf.String())
-
-	// _, err = conn.Write([]byte("ok"))
-	// if err != nil {
-	// 	log.Printf("write from conn failed, err:%v\n", err)
-	// 	return
-	// }
 
 	return localstore.WriteMessage(bf.String())
 }
