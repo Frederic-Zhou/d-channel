@@ -200,7 +200,7 @@ function get_ipfs_body(key){
 }
 
 function get_ipns_list(key){
-	$.get('/ipns/'+key+'/',function(res){
+	$.get(key+'/',function(res){
 		if(res.code!='1'){return;}
 		var htm=''
 		htm+='<li><a href="javascript:;" onclick="get_ipfs_body(\''+res.data.path+'\');">'+res.data.path+'</a></li>'
