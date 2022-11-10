@@ -14,6 +14,8 @@ import (
 
 func main() {
 	var addr = flag.String("addr", ":8088", "127.0.0.1:8088 or :8088")
+	var lport = flag.Int("lport", 8090, "default:8090")
+	var fport = flag.Int("fport", 8091, "default:8091")
 
 	flag.Parse()
 
@@ -21,8 +23,7 @@ func main() {
 	defer cancel()
 
 	localstore.InitDB()
-
-	ipfsnode.Start(ctx)
+	ipfsnode.Start(ctx, *lport, *fport)
 
 	if err := web.Start(*addr); err != nil {
 		fmt.Println(err.Error())

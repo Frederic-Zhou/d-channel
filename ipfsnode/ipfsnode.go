@@ -39,10 +39,11 @@ var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
 const messageProto = "/x/message"
-const listenLocalAddr = "/ip4/127.0.0.1/tcp/8090"
-const forwardLocalAddr = "/ip4/127.0.0.1/tcp/8091"
 
-func Start(ctx context.Context) {
+var listenLocalAddr = "/ip4/127.0.0.1/tcp/%d"
+var forwardLocalAddr = "/ip4/127.0.0.1/tcp/%d"
+
+func Start(ctx context.Context, lport, fport int) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
 	IpfsAPI, IpfsNode, err = spawn(ctx)
@@ -50,6 +51,9 @@ func Start(ctx context.Context) {
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
 	}
+
+	listenLocalAddr = fmt.Sprintf(listenLocalAddr, lport)
+	forwardLocalAddr = fmt.Sprintf(forwardLocalAddr, fport)
 
 	err = ListenLocal(ctx, IpfsNode)
 	if err != nil {
