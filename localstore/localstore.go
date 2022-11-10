@@ -1,77 +1,78 @@
 package localstore
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"sync"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-const localstorePath = "./repo/localstore.json"
+const localstorePath = "./localstore.db"
 
-// 本地存储主要保存订阅的IPNS name和Receipient
-var localstore LocalStore
+var db *gorm.DB
 
-func ReadStore() LocalStore {
+func InitDB() {
 
-	store, err := os.ReadFile(localstorePath)
-	if os.IsNotExist(err) {
-		localstore = LocalStore{}
-		lsf, _ := json.Marshal(localstore)
-		err = os.WriteFile(localstorePath, lsf, 0644)
-		if err != nil {
-			panic(fmt.Errorf("failed to read localstore"))
-		}
-
-		return localstore
-	}
-
+	var err error
+	db, err = gorm.Open(sqlite.Open(localstorePath), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Errorf("failed to read localstore"))
+		panic("failed to connect database")
 	}
 
-	localstore = LocalStore{}
-	err = json.Unmarshal(store, &localstore)
-	if err != nil {
-		panic(fmt.Errorf("failed to read localstore"))
-	}
-	return localstore
+	db.AutoMigrate(&Follow{}, &Peer{}, &Message{})
+	db.Debug()
+}
+
+func WriteMessage(body string) (err error) {
+	return db.Create(&Message{Body: body}).Error
+}
+
+func AddFollow(name, addr string) error {
+	return db.Create(&Follow{Name: name, Addr: addr}).Error
 
 }
 
-var mutex sync.Mutex
-
-func SaveStore() error {
-	mutex.Lock()
-	defer mutex.Unlock()
-	lsf, _ := json.Marshal(localstore)
-	return os.WriteFile(localstorePath, lsf, 0644)
-
+func AddPeer(name, recipient, pubkey string) error {
+	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey}).Error
 }
 
-func AddFollow(name, addr string) (LocalStore, error) {
-	localstore.IPNSNames = append(localstore.IPNSNames, ipnsname{Name: name, Addr: addr})
-	return localstore, SaveStore()
+func (f *Follow) Save() error {
+	return db.Save(f).Error
 }
 
-func AddPeer(name, recipient, peerPubKey string) (LocalStore, error) {
-	localstore.Peers = append(localstore.Peers, peer{Name: name, Recipient: recipient, PeerPubKey: peerPubKey})
-	return localstore, SaveStore()
+func (p *Peer) Save() error {
+	return db.Save(p).Error
 }
 
-type LocalStore struct {
-	IPNSNames []ipnsname `json:"ipnsnames"`
-	Peers     []peer     `json:"peers"`
+func GetFollows(skip, limit int) (follows []Follow, err error) {
+
+	err = db.Order("id desc").Offset(skip).Limit(limit).Find(&follows).Error
+	return
 }
 
-type ipnsname struct {
-	Name   string `json:"name"`
-	Addr   string `json:"addr"`
+func GetPeers(skip, limit int) (peers []Peer, err error) {
+	err = db.Order("id desc").Offset(skip).Limit(limit).Find(&peers).Error
+	return
+}
+
+func GetMessages(skip, limit int) (messages []Message, err error) {
+	err = db.Order("id desc").Offset(skip).Limit(limit).Find(&messages).Error
+	return
+}
+
+type Message struct {
+	gorm.Model
+	Body string `json:"body" gorm:"default:'';unique_index"`
+}
+
+type Follow struct {
+	gorm.Model
+	Name   string `json:"name" gorm:"default:'';unique_index"`
+	Addr   string `json:"addr" gorm:"default:'';unique_index"`
 	Latest string `json:"latest"`
 }
 
-type peer struct {
-	Name       string `json:"name"`
-	Recipient  string `json:"recipient"`
-	PeerPubKey string `json:"peerpubkey"`
+type Peer struct {
+	gorm.Model
+	Name      string `json:"name" gorm:"default:'';unique_index"`
+	Recipient string `json:"recipient" gorm:"default:'';unique_index"`
+	PubKey    string `json:"pubkey" gorm:"default:'';unique_index"`
 }
