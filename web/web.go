@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"d-channel/ipfsnode"
 	"d-channel/secret"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"sync"
 	"time"
 
 	"d-channel/localstore"
@@ -20,20 +22,16 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/ipfs/kubo/core"
 )
 
-var IpfsAPI icore.CoreAPI
-var IpfsNode *core.IpfsNode
-var SKeys *secret.SecretKeys
-var store localstore.LocalStore
+var IpfsAPI = ipfsnode.IpfsAPI
+var IpfsNode = ipfsnode.IpfsNode
+var SKeys = secret.SeKeys
 
 const indexFile = "post.json"
 const metaFile = "meta.json"
 
-func Start(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
-	IpfsAPI = ipfsAPI
-	IpfsNode = ipfsNode
+func Start(addr string) error {
 
 	router := gin.Default()
 
@@ -45,7 +43,9 @@ func Start(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	router.GET("/ipns/:name/*path", ipnsHandler)                 //
 	router.GET("/ipfs/:cid/*path", ipfsHandler)                  //
 	router.GET("/getsecretrecipient", getSecretRecipientHandler) //
-	router.GET("/getlocalstore", getLocalStoreHandler)           //
+	router.GET("/getfollows", getFollowsHandler)                 //
+	router.GET("/getpeers", getPeersHandler)                     //
+	router.GET("/getmessages", getMessagesHandler)               //
 	router.GET("/listipfskey", listIpfsKeyHandler)               //
 
 	router.POST("/publish", publishHandler)       //
@@ -57,9 +57,11 @@ func Start(ipfsAPI icore.CoreAPI, ipfsNode *core.IpfsNode, addr string) {
 	router.POST("/addrecipient", addRecipientHandler) //
 	router.GET("/listenfolloweds", listenFollowedsHandler)
 
+	router.POST("/sendmessage", sendMessageHandler)
+
 	router.GET("/index", indexHandler)
 
-	router.Run(addr)
+	return router.Run(addr)
 }
 
 // 解析ipns
@@ -124,7 +126,12 @@ func ipfsHandler(c *gin.Context) {
 
 }
 
+var publishLock sync.Mutex
+
 func publishHandler(c *gin.Context) {
+	// 锁，publish 同时只能1次
+	publishLock.Lock()
+	defer publishLock.Unlock()
 
 	/// --- 0. 判断是否提取密钥文件
 	if SKeys == nil {
@@ -318,7 +325,7 @@ func newSecretKeyHandler(c *gin.Context) {
 
 func getSecretKeyHandler(c *gin.Context) {
 	var err error
-	SKeys, err = secret.GetSecretKey(c.DefaultPostForm("password", ""))
+	_, err = secret.GetSecretKey(c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -336,9 +343,54 @@ func getSecretRecipientHandler(c *gin.Context) {
 }
 
 // 获得本地存储
-func getLocalStoreHandler(c *gin.Context) {
-	store = localstore.ReadStore()
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, store))
+func getFollowsHandler(c *gin.Context) {
+	lp := listParams{}
+	err := c.ShouldBind(&lp)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	follows, err := localstore.GetFollows(lp.Skip, lp.Limit)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, follows))
+}
+
+// 获得本地存储
+func getPeersHandler(c *gin.Context) {
+	lp := listParams{}
+	err := c.ShouldBind(&lp)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	peers, err := localstore.GetPeers(lp.Skip, lp.Limit)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, peers))
+}
+
+// 获得本地存储
+func getMessagesHandler(c *gin.Context) {
+	lp := listParams{}
+	err := c.ShouldBind(&lp)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	messages, err := localstore.GetMessages(lp.Skip, lp.Limit)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, messages))
 }
 
 // 订阅其他人的IPNS name
@@ -350,12 +402,12 @@ func followHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := localstore.AddFollow(name, addr)
+	err := localstore.AddFollow(name, addr)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, ls))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 }
 
 // 添加其他人的Recipient
@@ -368,12 +420,12 @@ func addRecipientHandler(c *gin.Context) {
 		return
 	}
 
-	ls, err := localstore.AddPeer(name, recipient, peerPubKey)
+	err := localstore.AddPeer(name, recipient, peerPubKey)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, ls))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 
 }
 
@@ -387,21 +439,21 @@ func listenFollowedsHandler(c *gin.Context) {
 		for {
 			select {
 			case <-time.After(5 * time.Second):
-				updates := [][]string{}
-				for _, a := range store.IPNSNames {
+				follows, _ := localstore.GetFollows(0, -1)
+				for _, a := range follows {
 					path, err := IpfsAPI.Name().Resolve(c, a.Addr)
 					if err != nil {
 						continue
 					}
 					if a.Latest != path.String() {
 						a.Latest = path.String()
-						updates = append(updates, []string{a.Name, a.Addr, a.Latest})
+						a.Save()
+
+						u, _ := json.Marshal(a)
+						chanStream <- string(u)
 					}
 				}
-				_ = localstore.SaveStore()
 
-				u, _ := json.Marshal(updates)
-				chanStream <- string(u)
 			case <-ctx.Done():
 				return
 			}
@@ -417,6 +469,21 @@ func listenFollowedsHandler(c *gin.Context) {
 		return false
 	})
 
+}
+
+func sendMessageHandler(c *gin.Context) {
+	// 封装发送socket
+
+	err := ipfsnode.SendMessage(
+		c.DefaultPostForm("peerid", ""),
+		c.DefaultPostForm("body", ""),
+	)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(0, "ok"))
 }
 
 func indexHandler(c *gin.Context) {
@@ -475,4 +542,9 @@ type post struct {
 type meta struct {
 	To   []string `json:"to" form:"to"`
 	Next string   `json:"next" form:"next"`
+}
+
+type listParams struct {
+	Limit int `form:"limit"`
+	Skip  int `form:"skip"`
 }

@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"d-channel/ipfsnode"
+	"d-channel/localstore"
 	"d-channel/web"
 	"flag"
+	"fmt"
 )
 
 // This package is needed so that all the preloaded plugins are loaded automatically
@@ -18,8 +20,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ipfsAPI, ipfsNode := ipfsnode.Start(ctx)
+	localstore.InitDB()
 
-	web.Start(ipfsAPI, ipfsNode, *addr)
+	ipfsnode.Start(ctx)
+
+	if err := web.Start(*addr); err != nil {
+		fmt.Println(err.Error())
+	}
 
 }

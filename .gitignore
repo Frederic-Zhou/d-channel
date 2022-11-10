@@ -1,2 +1,3 @@
 repo
-d-channel.exe
+*.exe
+message.db

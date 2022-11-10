@@ -14,7 +14,7 @@ import (
 
 const keysFile = "./repo/secretkeys.key"
 
-var secretKeys *SecretKeys
+var SeKeys *SecretKeys
 
 func GetSecretKey(password string) (*SecretKeys, error) {
 
@@ -74,8 +74,8 @@ func GetSecretKey(password string) (*SecretKeys, error) {
 		}
 	}
 
-	secretKeys = &SecretKeys{}
-	secretKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
+	SeKeys = &SecretKeys{}
+	SeKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key Recipient %s", err.Error())
 	}
@@ -85,10 +85,10 @@ func GetSecretKey(password string) (*SecretKeys, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read identities %s", err.Error())
 		}
-		secretKeys.Identities = append(secretKeys.Identities, id)
+		SeKeys.Identities = append(SeKeys.Identities, id)
 	}
 
-	return secretKeys, nil
+	return SeKeys, nil
 
 }
 
@@ -170,12 +170,12 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, fmt.Errorf("failed to spawn age indetity: %s", err.Error())
 	}
 
-	secretKeys.Recipient = identity.Recipient()
-	secretKeys.Identities = append(secretKeys.Identities, identity)
+	SeKeys.Recipient = identity.Recipient()
+	SeKeys.Identities = append(SeKeys.Identities, identity)
 
 	keyjson := keyJson{}
-	keyjson.Recipient = secretKeys.Recipient.(*age.X25519Recipient).String()
-	for _, s := range secretKeys.Identities {
+	keyjson.Recipient = SeKeys.Recipient.(*age.X25519Recipient).String()
+	for _, s := range SeKeys.Identities {
 		keyjson.Identities = append(keyjson.Identities, s.(*age.X25519Identity).String())
 	}
 
@@ -201,5 +201,5 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, err
 	}
 
-	return secretKeys, err
+	return SeKeys, err
 }
