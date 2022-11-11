@@ -33,8 +33,8 @@ func UnFollow(id string) error {
 	return db.Delete(&Follow{}, id).Error
 }
 
-func AddPeer(name, recipient, pubkey string) error {
-	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey}).Error
+func AddPeer(name, recipient, pubkey, peerID string) error {
+	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey, PeerID: peerID}).Error
 }
 func RemovePeer(id string) error {
 	return db.Delete(&Peer{}, id).Error
@@ -66,19 +66,20 @@ func GetMessages(skip, limit int) (messages []Message, err error) {
 
 type Message struct {
 	gorm.Model
-	Body string `json:"body" gorm:"default:'';unique_index"`
+	Body string `json:"body" gorm:"default:''"`
 }
 
 type Follow struct {
 	gorm.Model
-	Name   string `json:"name" gorm:"default:'';unique_index"`
-	Addr   string `json:"addr" gorm:"default:'';unique_index"`
+	Name   string `json:"name" gorm:"default:'';unique"`
+	Addr   string `json:"addr" gorm:"default:'';unique"`
 	Latest string `json:"latest"`
 }
 
 type Peer struct {
 	gorm.Model
-	Name      string `json:"name" gorm:"default:'';unique_index"`
-	Recipient string `json:"recipient" gorm:"default:'';unique_index"`
-	PubKey    string `json:"pubkey" gorm:"default:'';unique_index"`
+	Name      string `json:"name" gorm:"default:'';unique"`
+	Recipient string `json:"recipient" gorm:"default:'';unique"`
+	PubKey    string `json:"pubkey" gorm:"default:'';unique"`
+	PeerID    string `json:"peerid" gorm:"default:'';unique"`
 }
