@@ -27,11 +27,17 @@ func WriteMessage(body string) (err error) {
 
 func AddFollow(name, addr string) error {
 	return db.Create(&Follow{Name: name, Addr: addr}).Error
+}
 
+func UnFollow(id string) error {
+	return db.Delete(&Follow{}, id).Error
 }
 
 func AddPeer(name, recipient, pubkey string) error {
 	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey}).Error
+}
+func RemovePeer(id string) error {
+	return db.Delete(&Peer{}, id).Error
 }
 
 func (f *Follow) Save() error {

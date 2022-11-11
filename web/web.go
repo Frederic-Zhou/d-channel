@@ -5,6 +5,7 @@ import (
 	"context"
 	"d-channel/ipfsnode"
 	"d-channel/secret"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,16 +23,22 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/ipfs/kubo/core"
+	"github.com/libp2p/go-libp2p/core/crypto"
 )
-
-var IpfsAPI = ipfsnode.IpfsAPI
-var IpfsNode = ipfsnode.IpfsNode
-var SKeys = secret.SeKeys
 
 const indexFile = "post.json"
 const metaFile = "meta.json"
 
+var IpfsAPI icore.CoreAPI
+var IpfsNode *core.IpfsNode
+var SKeys *secret.SecretKeys
+
 func Start(addr string) error {
+
+	IpfsAPI = ipfsnode.IpfsAPI
+	IpfsNode = ipfsnode.IpfsNode
+	SKeys = secret.SeKeys
 
 	router := gin.Default()
 
@@ -40,25 +47,28 @@ func Start(addr string) error {
 	//设置模板文件地址
 	router.LoadHTMLGlob("view/*")
 
-	router.GET("/ipns/:name/*path", ipnsHandler)                 //
-	router.GET("/ipfs/:cid/*path", ipfsHandler)                  //
-	router.GET("/getsecretrecipient", getSecretRecipientHandler) //
-	router.GET("/getfollows", getFollowsHandler)                 //
-	router.GET("/getpeers", getPeersHandler)                     //
-	router.GET("/getmessages", getMessagesHandler)               //
-	router.GET("/listipfskey", listIpfsKeyHandler)               //
+	router.GET("/ipns/:name/*path", ipnsHandler)           //
+	router.GET("/ipfs/:cid/*path", ipfsHandler)            //
+	router.GET("/getrecipient", getRecipientHandler)       //得到自己的加密key
+	router.GET("/getfollows", getFollowsHandler)           //获得所有关注的ipns
+	router.GET("/getpeers", getPeersHandler)               //从数据库中获得所有对等好友
+	router.GET("/getmessages", getMessagesHandler)         //从数据库中获得p2p消息
+	router.GET("/getpubkey", getPubkeyHandler)             //获得自己的pubkey和peerid
+	router.GET("/listipfskey", listIpfsKeyHandler)         //列出自己的ipfskey
+	router.GET("/listenfolloweds", listenFollowedsHandler) //监听跟进的ipns，返回stream message
 
-	router.POST("/publish", publishHandler)       //
-	router.POST("/newipfskey", newIpfsKeyHandler) //
-	router.POST("/reomveipfskey", removeIpfsKeyHandler)
-	router.POST("/newsecretkey", newSecretKeyHandler) //
-	router.POST("/getsecretkey", getSecretKeyHandler) //
-	router.POST("/follow", followHandler)             //
-	router.POST("/addrecipient", addRecipientHandler) //
-	router.GET("/listenfolloweds", listenFollowedsHandler)
+	router.POST("/publish", publishHandler)             // 发布
+	router.POST("/newipfskey", newIpfsKeyHandler)       // 新建一个ipns地址
+	router.POST("/reomveipfskey", removeIpfsKeyHandler) //删除一个ipns地址
+	router.POST("/newsecretkey", newSecretKeyHandler)   // 新建一个加密键（提供新旧密码，并且会替换密码）
+	router.POST("/getsecretkey", getSecretKeyHandler)   // 获得加密键（需要密码，如果没有会创建）
+	router.POST("/follow", followHandler)               // 添加关注
+	router.POST("/addpeer", addPeertHandler)            // 添加对等好友
+	router.POST("/unfollow", unFollowHandler)           // 删除关注
+	router.POST("/removepeer", removePeertHandler)      // 删除好友
 
-	router.GET("/listenp2p", listenP2PHandler)
-	router.POST("/sendp2p", sendP2PHandler)
+	router.POST("/listenp2p", listenP2PHandler) //开启监听p2p，返回stream message
+	router.POST("/sendp2p", sendP2PHandler)     //发送p2p消息
 
 	router.GET("/index", indexHandler)
 
@@ -335,7 +345,7 @@ func getSecretKeyHandler(c *gin.Context) {
 }
 
 // 获得用于加密的公钥
-func getSecretRecipientHandler(c *gin.Context) {
+func getRecipientHandler(c *gin.Context) {
 	if SKeys == nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
 		return
@@ -394,6 +404,22 @@ func getMessagesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, messages))
 }
 
+func getPubkeyHandler(c *gin.Context) {
+
+	b, err := crypto.MarshalPublicKey(IpfsNode.PrivateKey.GetPublic())
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1,
+		map[string]string{
+			"peerid": IpfsNode.Identity.String(),
+			"pubkey": base64.URLEncoding.EncodeToString(b),
+		}))
+
+}
+
 // 订阅其他人的IPNS name
 func followHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
@@ -411,8 +437,17 @@ func followHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 }
 
-// 添加其他人的Recipient
-func addRecipientHandler(c *gin.Context) {
+func unFollowHandler(c *gin.Context) {
+	err := localstore.UnFollow(c.DefaultPostForm("id", "0"))
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
+}
+
+// 添加Peer
+func addPeertHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
 	recipient := c.DefaultPostForm("recipient", "")
 	peerPubKey := c.DefaultPostForm("peerpubkey", "")
@@ -428,6 +463,15 @@ func addRecipientHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 
+}
+
+func removePeertHandler(c *gin.Context) {
+	err := localstore.RemovePeer(c.DefaultPostForm("id", "0"))
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 }
 
 func listenFollowedsHandler(c *gin.Context) {
@@ -483,7 +527,7 @@ func listenP2PHandler(c *gin.Context) {
 		if err := ipfsnode.ListenLocal(
 			ctx,
 			readchan,
-			c.DefaultQuery("port", "8090"),
+			c.DefaultPostForm("port", "8090"),
 			ipfsnode.MessageProto,
 		); err != nil {
 			log.Println(err.Error())
