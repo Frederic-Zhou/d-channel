@@ -33,13 +33,11 @@ const metaFile = "meta.json"
 
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
-var SKeys *secret.SecretKeys
 
 func Start(addr string) error {
 
 	IpfsAPI = ipfsnode.IpfsAPI
 	IpfsNode = ipfsnode.IpfsNode
-	SKeys = secret.SeKeys
 
 	router := gin.Default()
 
@@ -127,7 +125,7 @@ func ipfsHandler(c *gin.Context) {
 	//在这里解密
 	//如果不是密闻，Decrypt会自动判断，返回原始数据
 	o := bytes.NewBuffer([]byte{})
-	err = secret.Decrypt(SKeys.Identities, f, o)
+	err = secret.Decrypt(secret.Get().Identities, f, o)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("decrypt err %s", err.Error())))
 		return
@@ -146,7 +144,7 @@ func publishHandler(c *gin.Context) {
 	defer publishLock.Unlock()
 
 	/// --- 0. 判断是否提取密钥文件
-	if SKeys == nil {
+	if secret.Get() == nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
 		return
 	}
@@ -181,7 +179,7 @@ func publishHandler(c *gin.Context) {
 	//如果postform.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	tos := []age.Recipient{}
 	if len(postform.To) > 0 {
-		postform.To = append(postform.To, SKeys.Recipient.(*age.X25519Recipient).String())
+		postform.To = append(postform.To, secret.Get().Recipient.(*age.X25519Recipient).String())
 		for _, to := range postform.To {
 			t, err := age.ParseX25519Recipient(to)
 			if err != nil {
@@ -327,31 +325,31 @@ func listIpfsKeyHandler(c *gin.Context) {
 // 使用一个新的密钥，会保留原来的私钥，新增一对公私钥，返回新的公钥
 func newSecretKeyHandler(c *gin.Context) {
 	var err error
-	SKeys, err = secret.NewSecretKey(c.DefaultPostForm("oldpassword", ""), c.DefaultPostForm("password", ""))
+	_, err = secret.NewSecretKey(c.DefaultPostForm("oldpassword", ""), c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, secret.Get().Recipient.(*age.X25519Recipient).String()))
 }
 
 func getSecretKeyHandler(c *gin.Context) {
 	var err error
-	_, err = secret.GetSecretKey(c.DefaultPostForm("password", ""))
+	_, err = secret.GenSecretKey(c.DefaultPostForm("password", ""))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, secret.Get().Recipient.(*age.X25519Recipient).String()))
 }
 
 // 获得用于加密的公钥
 func getRecipientHandler(c *gin.Context) {
-	if SKeys == nil {
+	if secret.Get() == nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "getsecretkey first"))
 		return
 	}
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, SKeys.Recipient.(*age.X25519Recipient).String()))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, secret.Get().Recipient.(*age.X25519Recipient).String()))
 }
 
 // 获得本地存储

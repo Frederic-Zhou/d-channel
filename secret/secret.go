@@ -14,9 +14,13 @@ import (
 
 const keysFile = "./secretkeys.key"
 
-var SeKeys *SecretKeys
+var secretKeys *SecretKeys
 
-func GetSecretKey(password string) (*SecretKeys, error) {
+func Get() *SecretKeys {
+	return secretKeys
+}
+
+func GenSecretKey(password string) (*SecretKeys, error) {
 
 	//从文件中读取key
 	//如果文件不存在，创建
@@ -74,8 +78,8 @@ func GetSecretKey(password string) (*SecretKeys, error) {
 		}
 	}
 
-	SeKeys = &SecretKeys{}
-	SeKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
+	secretKeys = &SecretKeys{}
+	secretKeys.Recipient, err = age.ParseX25519Recipient(keyJson.Recipient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key Recipient %s", err.Error())
 	}
@@ -85,10 +89,10 @@ func GetSecretKey(password string) (*SecretKeys, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read identities %s", err.Error())
 		}
-		SeKeys.Identities = append(SeKeys.Identities, id)
+		secretKeys.Identities = append(secretKeys.Identities, id)
 	}
 
-	return SeKeys, nil
+	return secretKeys, nil
 
 }
 
@@ -170,12 +174,12 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, fmt.Errorf("failed to spawn age indetity: %s", err.Error())
 	}
 
-	SeKeys.Recipient = identity.Recipient()
-	SeKeys.Identities = append(SeKeys.Identities, identity)
+	secretKeys.Recipient = identity.Recipient()
+	secretKeys.Identities = append(secretKeys.Identities, identity)
 
 	keyjson := keyJson{}
-	keyjson.Recipient = SeKeys.Recipient.(*age.X25519Recipient).String()
-	for _, s := range SeKeys.Identities {
+	keyjson.Recipient = secretKeys.Recipient.(*age.X25519Recipient).String()
+	for _, s := range secretKeys.Identities {
 		keyjson.Identities = append(keyjson.Identities, s.(*age.X25519Identity).String())
 	}
 
@@ -201,5 +205,5 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, err
 	}
 
-	return SeKeys, err
+	return secretKeys, err
 }
