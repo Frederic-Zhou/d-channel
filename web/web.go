@@ -415,9 +415,8 @@ func getPubkeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1,
 		map[string]string{
 			"peerid": IpfsNode.Identity.String(),
-			"pubkey": base64.URLEncoding.EncodeToString(b),
+			"pubkey": base64.StdEncoding.EncodeToString(b),
 		}))
-
 }
 
 // 订阅其他人的IPNS name
