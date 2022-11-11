@@ -495,7 +495,7 @@ func listenP2PHandler(c *gin.Context) {
 		if msg, ok := <-readchan; ok {
 			log.Println("read from chan", string(msg))
 			err := localstore.WriteMessage(string(msg))
-			log.Println("write to localstore", string(msg))
+			log.Println("write to localstore", string(msg), err)
 			if err != nil {
 				c.SSEvent("message", err.Error())
 				return false
