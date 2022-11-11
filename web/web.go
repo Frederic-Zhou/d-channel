@@ -57,7 +57,8 @@ func Start(addr string) error {
 	router.POST("/addrecipient", addRecipientHandler) //
 	router.GET("/listenfolloweds", listenFollowedsHandler)
 
-	router.POST("/sendmessage", sendMessageHandler)
+	router.POST("/listenp2p", listenP2PHandler)
+	router.POST("/sendp2p", sendP2PHandler)
 
 	router.GET("/index", indexHandler)
 
@@ -463,7 +464,7 @@ func listenFollowedsHandler(c *gin.Context) {
 
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-chanStream; ok {
-			c.SSEvent("updates", msg)
+			c.SSEvent("message", msg)
 			return true
 		}
 		return false
@@ -471,12 +472,43 @@ func listenFollowedsHandler(c *gin.Context) {
 
 }
 
-func sendMessageHandler(c *gin.Context) {
+func listenP2PHandler(c *gin.Context) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var readchan = make(chan []byte, 10)
+
+	go func(readchan chan []byte) {
+		defer close(readchan)
+		if err := ipfsnode.ListenLocal(ctx, readchan, 8090, ipfsnode.MessageProto); err != nil {
+			log.Println(err.Error())
+		}
+
+	}(readchan)
+
+	c.Stream(func(w io.Writer) bool {
+		if msg, ok := <-readchan; ok {
+			err := localstore.WriteMessage(string(msg))
+			if err != nil {
+				c.SSEvent("message", err.Error())
+				return false
+			}
+			c.SSEvent("message", msg)
+			return true
+		}
+		return false
+	})
+
+}
+
+func sendP2PHandler(c *gin.Context) {
 	// 封装发送socket
 
 	err := ipfsnode.SendMessage(
 		c.DefaultPostForm("peerid", ""),
 		c.DefaultPostForm("body", ""),
+		8091,
+		ipfsnode.MessageProto,
 	)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))

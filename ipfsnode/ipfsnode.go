@@ -3,7 +3,6 @@ package ipfsnode
 import (
 	"bytes"
 	"context"
-	"d-channel/localstore"
 	"fmt"
 	"io"
 	"log"
@@ -38,10 +37,7 @@ import (
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
-const messageProto = "/x/message"
-
-var listenLocalAddr = "/ip4/127.0.0.1/tcp/%d"
-var forwardLocalAddr = "/ip4/127.0.0.1/tcp/%d"
+const MessageProto = "/x/message"
 
 func Start(ctx context.Context, lport, fport int) {
 	// Spawn a local peer using a temporary path, for testing purposes
@@ -50,13 +46,6 @@ func Start(ctx context.Context, lport, fport int) {
 
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
-	}
-
-	listenLocalAddr = fmt.Sprintf(listenLocalAddr, lport)
-	forwardLocalAddr = fmt.Sprintf(forwardLocalAddr, fport)
-
-	if err = ListenLocal(ctx); err != nil {
-		panic(fmt.Errorf("listen: %s", err))
 	}
 
 }
@@ -167,43 +156,38 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 	return api, node, err
 }
 
-// / -------]
-func ListenLocal(ctx context.Context) (err error) {
+// / -------
+func ListenLocal(ctx context.Context, readchan chan []byte, port int, proto string) (err error) {
 
-	var proto = p2pcore.ProtocolID(messageProto)
-
-	addr, err := multiaddr.NewMultiaddr(listenLocalAddr)
+	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
 	if err != nil {
 		return
 	}
 
-	listener, err := IpfsNode.P2P.ForwardRemote(ctx, proto, addr, true)
+	listener, err := IpfsNode.P2P.ForwardRemote(ctx, p2pcore.ProtocolID(proto), addr, true)
 	if err != nil {
 		return
 	}
+	defer IpfsNode.P2P.ListenersP2P.Close(func(listener p2p.Listener) bool {
+		return true
+	})
 
 	mlistener, err := manet.Listen(listener.TargetAddress())
 	if err != nil {
 		return
 	}
+	defer mlistener.Close()
 
-	go func(ctx context.Context, mlistener manet.Listener) {
-		log.Println("ready to listen", listener.Protocol(), listener.ListenAddress(), listener.TargetAddress())
-		if err := acceptConnect(ctx, mlistener); err != nil {
-			log.Println(err)
-		}
-	}(ctx, mlistener)
+	log.Println("ready to listen", listener.Protocol(), listener.ListenAddress(), listener.TargetAddress())
+	if err := acceptConnect(ctx, mlistener, readchan); err != nil {
+		log.Println(err)
+	}
 
 	return
 
 }
 
-func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
-
-	defer mlistener.Close()
-	defer IpfsNode.P2P.ListenersP2P.Close(func(listener p2p.Listener) bool {
-		return true
-	})
+func acceptConnect(ctx context.Context, mlistener manet.Listener, readchan chan []byte) (err error) {
 
 	for {
 		select {
@@ -218,11 +202,17 @@ func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
 			conn.SetDeadline(time.Now().Add(10 * time.Second))
 			log.Println("got a conn", conn.RemoteAddr())
 
-			go func() {
-				if err := readConn(conn); err != nil {
-					log.Println(err)
+			go func(conn manet.Conn, readchan chan []byte) {
+				defer conn.Close()
+
+				bf := bytes.NewBuffer([]byte{})
+				if _, err = io.Copy(bf, conn); err != nil {
+					return
 				}
-			}()
+
+				readchan <- bf.Bytes()
+
+			}(conn, readchan)
 
 		}
 
@@ -230,36 +220,18 @@ func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
 
 }
 
-func readConn(conn manet.Conn) (err error) {
-	defer conn.Close()
-
-	//io.copy 将会读到EOF后完成
-	//因此，发送端发送完整个内容，并且关闭，才会copy完成，这是一次连接一次数据的模式
-	//未来考虑是否采用长连接保持通讯。
-	bf := bytes.NewBuffer([]byte{})
-	if _, err = io.Copy(bf, conn); err != nil {
-		return
-	}
-
-	log.Println("message:", bf.String())
-
-	return localstore.WriteMessage(bf.String())
-}
-
 var sendLock sync.Mutex
 
 // 发送过程，必须是非并发的
 // 由于接受端读取采用io.copy，因此发送端 采用连接、发送、关闭，一次连接发送一次数据。
-func SendMessage(peerID string, message string) (err error) {
+func SendMessage(peerID string, message string, port int, proto string) (err error) {
 
 	sendLock.Lock()
 	defer sendLock.Unlock()
 
 	ctx := context.Background()
 
-	var proto = p2pcore.ProtocolID(messageProto)
-
-	addr, err := multiaddr.NewMultiaddr(forwardLocalAddr)
+	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
 	if err != nil {
 		return
 	}
@@ -269,7 +241,7 @@ func SendMessage(peerID string, message string) (err error) {
 		return
 	}
 
-	l, err := IpfsNode.P2P.ForwardLocal(ctx, peerid, proto, addr)
+	l, err := IpfsNode.P2P.ForwardLocal(ctx, peerid, p2pcore.ProtocolID(proto), addr)
 	if err != nil {
 		return
 	}
