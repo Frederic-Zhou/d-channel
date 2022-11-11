@@ -57,7 +57,7 @@ func Start(addr string) error {
 	router.POST("/addrecipient", addRecipientHandler) //
 	router.GET("/listenfolloweds", listenFollowedsHandler)
 
-	router.POST("/listenp2p", listenP2PHandler)
+	router.GET("/listenp2p", listenP2PHandler)
 	router.POST("/sendp2p", sendP2PHandler)
 
 	router.GET("/index", indexHandler)
@@ -480,7 +480,12 @@ func listenP2PHandler(c *gin.Context) {
 
 	go func(readchan chan []byte) {
 		defer close(readchan)
-		if err := ipfsnode.ListenLocal(ctx, readchan, 8090, ipfsnode.MessageProto); err != nil {
+		if err := ipfsnode.ListenLocal(
+			ctx,
+			readchan,
+			c.DefaultQuery("port", "8090"),
+			ipfsnode.MessageProto,
+		); err != nil {
 			log.Println(err.Error())
 		}
 
@@ -488,12 +493,15 @@ func listenP2PHandler(c *gin.Context) {
 
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-readchan; ok {
+			log.Println("read from chan", string(msg))
 			err := localstore.WriteMessage(string(msg))
+			log.Println("write to localstore", string(msg))
 			if err != nil {
 				c.SSEvent("message", err.Error())
 				return false
 			}
 			c.SSEvent("message", msg)
+			log.Println("send to SSEvent", string(msg))
 			return true
 		}
 		return false
@@ -507,7 +515,7 @@ func sendP2PHandler(c *gin.Context) {
 	err := ipfsnode.SendMessage(
 		c.DefaultPostForm("peerid", ""),
 		c.DefaultPostForm("body", ""),
-		8091,
+		c.DefaultPostForm("port", "8091"),
 		ipfsnode.MessageProto,
 	)
 	if err != nil {
@@ -560,13 +568,13 @@ type postForm struct {
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
 	KeyName string                  `json:"-" form:"keyname"` //which key to publish
-	Init    bool                    `json:"-" form:"init"`
+	Init    bool                    `json:"-" form:"init,default=false"`
 }
 
 // 主内容对象
 type post struct {
 	Body        string   `json:"body" form:"body"`
-	Type        string   `json:"type" form:"type"`
+	Type        string   `json:"type" form:"type,default=plaintext"`
 	Attachments []string `json:"attachments" form:"-"`
 }
 
@@ -577,6 +585,6 @@ type meta struct {
 }
 
 type listParams struct {
-	Limit int `form:"limit"`
-	Skip  int `form:"skip"`
+	Limit int `form:"limit,default=10"`
+	Skip  int `form:"skip,default=0"`
 }

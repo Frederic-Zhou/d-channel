@@ -157,9 +157,9 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 }
 
 // / -------
-func ListenLocal(ctx context.Context, readchan chan []byte, port int, proto string) (err error) {
+func ListenLocal(ctx context.Context, readchan chan []byte, port string, proto string) (err error) {
 
-	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
+	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port))
 	if err != nil {
 		return
 	}
@@ -210,7 +210,9 @@ func acceptConnect(ctx context.Context, mlistener manet.Listener, readchan chan 
 					return
 				}
 
+				log.Println("conn read", bf.String())
 				readchan <- bf.Bytes()
+				log.Println("write to readchan", bf.String())
 
 			}(conn, readchan)
 
@@ -224,14 +226,14 @@ var sendLock sync.Mutex
 
 // 发送过程，必须是非并发的
 // 由于接受端读取采用io.copy，因此发送端 采用连接、发送、关闭，一次连接发送一次数据。
-func SendMessage(peerID string, message string, port int, proto string) (err error) {
+func SendMessage(peerID string, message string, port string, proto string) (err error) {
 
 	sendLock.Lock()
 	defer sendLock.Unlock()
 
 	ctx := context.Background()
 
-	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
+	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port))
 	if err != nil {
 		return
 	}
