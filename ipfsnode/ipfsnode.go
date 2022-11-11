@@ -55,9 +55,8 @@ func Start(ctx context.Context, lport, fport int) {
 	listenLocalAddr = fmt.Sprintf(listenLocalAddr, lport)
 	forwardLocalAddr = fmt.Sprintf(forwardLocalAddr, fport)
 
-	err = ListenLocal(ctx)
-	if err != nil {
-		panic(fmt.Errorf("listen local err: %s", err))
+	if err = ListenLocal(ctx); err != nil {
+		panic(fmt.Errorf("listen: %s", err))
 	}
 
 }
@@ -168,7 +167,7 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 	return api, node, err
 }
 
-// / -------
+// / -------]
 func ListenLocal(ctx context.Context) (err error) {
 
 	var proto = p2pcore.ProtocolID(messageProto)
@@ -182,17 +181,18 @@ func ListenLocal(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
+
 	mlistener, err := manet.Listen(listener.TargetAddress())
 	if err != nil {
 		return
 	}
 
-	go func(ctx context.Context) {
-		log.Println("start accpet")
-		if err = acceptConnect(ctx, mlistener); err != nil {
+	go func(ctx context.Context, mlistener manet.Listener) {
+		log.Println("ready to listen", listener.Protocol(), listener.ListenAddress(), listener.TargetAddress())
+		if err := acceptConnect(ctx, mlistener); err != nil {
 			log.Println(err)
 		}
-	}(ctx)
+	}(ctx, mlistener)
 
 	return
 
@@ -201,6 +201,9 @@ func ListenLocal(ctx context.Context) (err error) {
 func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
 
 	defer mlistener.Close()
+	defer IpfsNode.P2P.ListenersP2P.Close(func(listener p2p.Listener) bool {
+		return true
+	})
 
 	for {
 		select {
@@ -230,9 +233,11 @@ func acceptConnect(ctx context.Context, mlistener manet.Listener) (err error) {
 func readConn(conn manet.Conn) (err error) {
 	defer conn.Close()
 
+	//io.copy 将会读到EOF后完成
+	//因此，发送端发送完整个内容，并且关闭，才会copy完成，这是一次连接一次数据的模式
+	//未来考虑是否采用长连接保持通讯。
 	bf := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(bf, conn)
-	if err != nil {
+	if _, err = io.Copy(bf, conn); err != nil {
 		return
 	}
 
@@ -243,6 +248,8 @@ func readConn(conn manet.Conn) (err error) {
 
 var sendLock sync.Mutex
 
+// 发送过程，必须是非并发的
+// 由于接受端读取采用io.copy，因此发送端 采用连接、发送、关闭，一次连接发送一次数据。
 func SendMessage(peerID string, message string) (err error) {
 
 	sendLock.Lock()
@@ -280,13 +287,6 @@ func SendMessage(peerID string, message string) (err error) {
 	conn.SetDeadline(time.Now().Add(10 * time.Second))
 	n, err := conn.Write([]byte(message))
 	log.Println("writed:", n)
-
-	// var buf [1024]byte
-	// n, err = conn.Read(buf[:])
-	// if err != nil {
-	// 	return
-	// }
-	// log.Printf("收到服务端回复:%v\n", string(buf[:n]))
 
 	return
 
