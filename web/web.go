@@ -25,6 +25,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/core"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 const indexFile = "post.json"
@@ -415,7 +416,7 @@ func getPubkeyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1,
 		map[string]string{
 			"peerid": IpfsNode.Identity.String(),
-			"pubkey": base64.StdEncoding.EncodeToString(b),
+			"pubkey": base64.RawURLEncoding.EncodeToString(b),
 		}))
 }
 
@@ -450,12 +451,36 @@ func addPeertHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
 	recipient := c.DefaultPostForm("recipient", "")
 	peerPubKey := c.DefaultPostForm("peerpubkey", "")
+	peerID := c.DefaultPostForm("peerid", "")
 	if name == "" && recipient == "" {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null name or recipient"))
 		return
 	}
 
-	err := localstore.AddPeer(name, recipient, peerPubKey)
+	pidbyte, err := base64.RawURLEncoding.DecodeString(peerPubKey)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "b64:"+err.Error()))
+		return
+	}
+
+	pk, err := crypto.UnmarshalPublicKey(pidbyte)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "unmarshal:"+err.Error()))
+		return
+	}
+
+	pid, err := peer.IDFromPublicKey(pk)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "idfrompk:"+err.Error()))
+		return
+	}
+
+	if pid.String() != peerID {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "peerid not matches"))
+		return
+	}
+
+	err = localstore.AddPeer(name, recipient, peerPubKey, peerID)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
