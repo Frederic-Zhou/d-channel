@@ -39,7 +39,7 @@ var IpfsNode *core.IpfsNode
 
 const MessageProto = "/x/message"
 
-func Start(ctx context.Context, lport, fport int) {
+func Start(ctx context.Context) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
 	IpfsAPI, IpfsNode, err = spawn(ctx)
