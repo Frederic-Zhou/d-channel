@@ -53,12 +53,12 @@ func Start(addr string) error {
 	router.GET("/getpeers", getPeersHandler)               //从数据库中获得所有对等好友
 	router.GET("/getmessages", getMessagesHandler)         //从数据库中获得p2p消息
 	router.GET("/getpubkey", getPubkeyHandler)             //获得自己的pubkey和peerid
-	router.GET("/listipfskey", listIpfsKeyHandler)         //列出自己的ipfskey
+	router.GET("/listipnskey", listIpnsKeyHandler)         //列出自己的ipnskey
 	router.GET("/listenfolloweds", listenFollowedsHandler) //监听跟进的ipns，返回stream message
 
 	router.POST("/publish", publishHandler)             // 发布
-	router.POST("/newipfskey", newIpfsKeyHandler)       // 新建一个ipns地址
-	router.POST("/reomveipfskey", removeIpfsKeyHandler) //删除一个ipns地址
+	router.POST("/newipnskey", newIpnsKeyHandler)       // 新建一个ipns地址
+	router.POST("/reomveipnskey", removeIpnsKeyHandler) //删除一个ipns地址
 	router.POST("/newsecretkey", newSecretKeyHandler)   // 新建一个加密键（提供新旧密码，并且会替换密码）
 	router.POST("/getsecretkey", getSecretKeyHandler)   // 获得加密键（需要密码，如果没有会创建）
 	router.POST("/follow", followHandler)               // 添加关注
@@ -160,14 +160,14 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 2. 解析出self发布的最新的cid，并写入到post中的next字段
-	ipfskey, err := getIpfsKey(postform.KeyName)
+	ipnskey, err := getIpnsKey(postform.KeyName)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
 		return
 	}
 
 	if !postform.Init {
-		next, err := IpfsAPI.Name().Resolve(context.Background(), ipfskey.Path().String())
+		next, err := IpfsAPI.Name().Resolve(context.Background(), ipnskey.Path().String())
 		if err != nil {
 			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
 			return
@@ -222,7 +222,7 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 8. 发布新的cid到self IPNS
-	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipfskey.Name()))
+	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipnskey.Name()))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
 		return
@@ -283,7 +283,7 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 }
 
 // 新增IPFS key，也就是新增一个IPNS
-func newIpfsKeyHandler(c *gin.Context) {
+func newIpnsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
 	name := c.DefaultPostForm("name", "")
 	key, err := IpfsAPI.Key().Generate(context.Background(), name)
@@ -296,7 +296,7 @@ func newIpfsKeyHandler(c *gin.Context) {
 }
 
 // 移除ipfs key
-func removeIpfsKeyHandler(c *gin.Context) {
+func removeIpnsKeyHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
 	key, err := IpfsAPI.Key().Remove(context.Background(), name)
 	if err != nil {
@@ -308,7 +308,7 @@ func removeIpfsKeyHandler(c *gin.Context) {
 }
 
 // 列出所有IPFS key，也就是列出所有IPNS
-func listIpfsKeyHandler(c *gin.Context) {
+func listIpnsKeyHandler(c *gin.Context) {
 
 	keys, err := IpfsAPI.Key().List(context.Background())
 	if err != nil {
@@ -606,7 +606,7 @@ func ResponseJsonFormat(code int8, data interface{}) responseJson {
 }
 
 // 获得IPFS的key对象，如果传递的名称没有对应的key，默认返回self
-func getIpfsKey(name string) (icore.Key, error) {
+func getIpnsKey(name string) (icore.Key, error) {
 	ipnsKeys, err := IpfsAPI.Key().List(context.Background())
 	if err != nil {
 		return nil, err
