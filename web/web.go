@@ -58,7 +58,7 @@ func Start(addr string) error {
 
 	router.POST("/publish", publishHandler)             // 发布
 	router.POST("/newipnskey", newIpnsKeyHandler)       // 新建一个ipns地址
-	router.POST("/reomveipnskey", removeIpnsKeyHandler) //删除一个ipns地址
+	router.POST("/reomveipnskey", removeIpnsKeyHandler) // 删除一个ipns地址
 	router.POST("/newsecretkey", newSecretKeyHandler)   // 新建一个加密键（提供新旧密码，并且会替换密码）
 	router.POST("/getsecretkey", getSecretKeyHandler)   // 获得加密键（需要密码，如果没有会创建）
 	router.POST("/follow", followHandler)               // 添加关注
