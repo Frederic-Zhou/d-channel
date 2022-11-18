@@ -37,4 +37,8 @@ reicipent用于发布和p2p加密
 
 监听的其他人的NS
 
-`这里需要统一名称`
+## P2P
+
+开启本地p2p监听，默认 proto /x/message
+
+发送消息到指定peerid
