@@ -152,35 +152,35 @@ func publishHandler(c *gin.Context) {
 	/// --- 1. 定义一个files.Nodes map,用于上传到IPFS网络
 	postMap := map[string]files.Node{}
 	//从请求中提取出请求内容
-	var postform postForm
-	err := c.ShouldBind(&postform)
+	var postparams postParams
+	err := c.ShouldBind(&postparams)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("bind err: %s", err.Error())))
 		return
 	}
 
 	/// --- 2. 解析出self发布的最新的cid，并写入到post中的next字段
-	ipnskey, err := getIpnsKey(postform.NSname)
+	ipnskey, err := getIpnsKey(postparams.NSname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
 		return
 	}
 
-	if !postform.Init {
+	if !postparams.Init {
 		next, err := IpfsAPI.Name().Resolve(context.Background(), ipnskey.Path().String())
 		if err != nil {
 			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
 			return
 		}
-		postform.Next = next.String()
+		postparams.Next = next.String()
 	}
 
 	/// --- 3. 获得组织加密公钥
-	//如果postform.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
+	//如果postparams.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
 	tos := []age.Recipient{}
-	if len(postform.To) > 0 {
-		postform.To = append(postform.To, secret.Get().Recipient.(*age.X25519Recipient).String())
-		for _, to := range postform.To {
+	if len(postparams.To) > 0 {
+		postparams.To = append(postparams.To, secret.Get().Recipient.(*age.X25519Recipient).String())
+		for _, to := range postparams.To {
 			t, err := age.ParseX25519Recipient(to)
 			if err != nil {
 				continue
@@ -190,14 +190,14 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 4. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
-	err = uploadFiles(&postform, postMap, tos)
+	err = uploadFiles(&postparams, postMap, tos)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
 
 	/// --- 5. 对post对象加密（如果不需要加密则保存原始数据）
-	data, _ := json.Marshal(postform.post)
+	data, _ := json.Marshal(postparams.post)
 	if len(tos) > 0 {
 		f := bytes.NewBuffer(data)
 		o := bytes.NewBuffer([]byte{})
@@ -211,7 +211,7 @@ func publishHandler(c *gin.Context) {
 	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 6. 将meta对象，重新序列化为json，并作为meta.json文件保存
-	metaJson, _ := json.Marshal(postform.meta)
+	metaJson, _ := json.Marshal(postparams.meta)
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 
 	/// --- 7. 将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
@@ -237,19 +237,19 @@ func publishHandler(c *gin.Context) {
 }
 
 // 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
-func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Recipient) error {
+func uploadFiles(postparams *postParams, postMap map[string]files.Node, tos []age.Recipient) error {
 	//迭代所有附件
 	//文件名不能为post,也不能重复
 	// 如果有to，说明需要加密
 	// 使用to里面的公钥加密文件
 	// 获得文件加密后的数据（或者不需要加密的原始数据），并且保存到postMap
-	for i, u := range postform.Uploads {
+	for i, u := range postparams.Uploads {
 		log.Println(i, u.Filename)
 		if _, ok := postMap[u.Filename]; u.Filename == indexFile || ok {
 			return fmt.Errorf("filename err: %s %t %t", u.Filename, u.Filename == indexFile, ok)
 		}
 
-		postform.Attachments = append(postform.Attachments, u.Filename)
+		postparams.Attachments = append(postparams.Attachments, u.Filename)
 
 		f, err := u.Open()
 		if err != nil {
@@ -258,7 +258,7 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 
 		var data []byte
 
-		if len(postform.To) > 0 {
+		if len(postparams.To) > 0 {
 
 			o := bytes.NewBuffer([]byte{})
 			err = secret.Encrypt(tos, f, o)
@@ -629,7 +629,7 @@ type responseJson struct {
 }
 
 // publish的表单request表单对象
-type postForm struct {
+type postParams struct {
 	post                            //save to post.json
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field

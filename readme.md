@@ -25,12 +25,16 @@ channel
 
 ## peer
 
-对等体，包含 别名、加密key、peerid、pubkey(ipfs节点的公钥匙)
+对等体，包含 别名、reicipent、peerid、pubkey(ipfs节点的公钥匙)
 
 peerid可以从pubkey中得到(peer.id.frompubkey)
 
+peerid将用于p2p通信。
+
+reicipent用于发布和p2p加密
+
 ## follow
 
-IPNS KEY 亦 addr
+监听的其他人的NS
 
 `这里需要统一名称`
