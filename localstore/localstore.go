@@ -25,8 +25,8 @@ func WriteMessage(body string) (err error) {
 	return db.Create(&Message{Body: body}).Error
 }
 
-func AddFollow(name, addr string) error {
-	return db.Create(&Follow{Name: name, Addr: addr}).Error
+func AddFollow(name, ns string) error {
+	return db.Create(&Follow{Name: name, NS: ns}).Error
 }
 
 func UnFollow(id string) error {
@@ -72,7 +72,7 @@ type Message struct {
 type Follow struct {
 	gorm.Model
 	Name   string `json:"name" gorm:"default:'';unique"`
-	Addr   string `json:"addr" gorm:"default:'';unique"`
+	NS     string `json:"ns" gorm:"default:'';unique"`
 	Latest string `json:"latest"`
 }
 

@@ -46,7 +46,7 @@ func Start(addr string) error {
 	//设置模板文件地址
 	router.LoadHTMLGlob("view/*")
 
-	router.GET("/ipns/:name/*path", ipnsHandler)           //
+	router.GET("/ipns/:ns/*path", ipnsHandler)             //
 	router.GET("/ipfs/:cid/*path", ipfsHandler)            //
 	router.GET("/getrecipient", getRecipientHandler)       //得到自己的加密key
 	router.GET("/getfollows", getFollowsHandler)           //获得所有关注的ipns
@@ -76,10 +76,10 @@ func Start(addr string) error {
 
 // 解析ipns
 func ipnsHandler(c *gin.Context) {
-	name := c.Param("name")
+	ns := c.Param("ns")
 	fpath := c.Param("path")
 
-	fullPath, err := IpfsAPI.Name().Resolve(context.Background(), name+fpath)
+	fullPath, err := IpfsAPI.Name().Resolve(context.Background(), ns+fpath)
 
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
@@ -160,7 +160,7 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 2. 解析出self发布的最新的cid，并写入到post中的next字段
-	ipnskey, err := getIpnsKey(postform.KeyName)
+	ipnskey, err := getIpnsKey(postform.NSname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("get  key err: %s", err.Error())))
 		return
@@ -222,17 +222,17 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 8. 发布新的cid到self IPNS
-	nameEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipnskey.Name()))
+	nsEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipnskey.Name()))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
 		return
 	}
 
-	log.Println("name:", nameEntry.Name(), "value:", nameEntry.Value().String())
+	log.Println("name:", nsEntry.Name(), "value:", nsEntry.Value().String())
 	//返回结果
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{
-		"name":  nameEntry.Name(),
-		"value": nameEntry.Value().String(),
+		"name":  nsEntry.Name(),
+		"value": nsEntry.Value().String(),
 	}))
 }
 
@@ -285,8 +285,8 @@ func uploadFiles(postform *postForm, postMap map[string]files.Node, tos []age.Re
 // 新增IPFS key，也就是新增一个IPNS
 func newIpnsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
-	name := c.DefaultPostForm("name", "")
-	key, err := IpfsAPI.Key().Generate(context.Background(), name)
+	nsname := c.DefaultPostForm("nsname", "")
+	key, err := IpfsAPI.Key().Generate(context.Background(), nsname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -297,8 +297,8 @@ func newIpnsKeyHandler(c *gin.Context) {
 
 // 移除ipfs key
 func removeIpnsKeyHandler(c *gin.Context) {
-	name := c.DefaultPostForm("name", "")
-	key, err := IpfsAPI.Key().Remove(context.Background(), name)
+	nsname := c.DefaultPostForm("nsname", "")
+	key, err := IpfsAPI.Key().Remove(context.Background(), nsname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -421,13 +421,13 @@ func getPubkeyHandler(c *gin.Context) {
 // 订阅其他人的IPNS name
 func followHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
-	addr := c.DefaultPostForm("addr", "")
-	if addr == "" && name == "" {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null addr or name"))
+	ns := c.DefaultPostForm("ns", "")
+	if ns == "" && name == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null ns or name"))
 		return
 	}
 
-	err := localstore.AddFollow(name, addr)
+	err := localstore.AddFollow(name, ns)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -508,7 +508,7 @@ func listenFollowedsHandler(c *gin.Context) {
 			case <-time.After(5 * time.Second):
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
-					path, err := IpfsAPI.Name().Resolve(c, a.Addr)
+					path, err := IpfsAPI.Name().Resolve(c, a.NS)
 					if err != nil {
 						continue
 					}
@@ -605,7 +605,7 @@ func ResponseJsonFormat(code int8, data interface{}) responseJson {
 	}
 }
 
-// 获得IPFS的key对象，如果传递的名称没有对应的key，默认返回self
+// 获得IPNS的key对象，如果传递的名称没有对应的key，默认返回self
 func getIpnsKey(name string) (icore.Key, error) {
 	ipnsKeys, err := IpfsAPI.Key().List(context.Background())
 	if err != nil {
@@ -633,7 +633,7 @@ type postForm struct {
 	post                            //save to post.json
 	meta                            //save to meta.json
 	Uploads []*multipart.FileHeader `json:"-" form:"uploads"` //upload field
-	KeyName string                  `json:"-" form:"keyname"` //which key to publish
+	NSname  string                  `json:"-" form:"nsname"`  //which key to publish
 	Init    bool                    `json:"-" form:"init,default=false"`
 }
 
