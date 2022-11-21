@@ -644,11 +644,12 @@ func subTopicHandler(c *gin.Context) {
 
 			msgJsonByte, _ := json.Marshal(map[string]string{
 				"seq":  string(msg.Seq()),
-				"form": string(msg.From()),
+				"form": msg.From().String(),
 				"data": string(msg.Data()),
 			})
 
 			c.SSEvent("message", string(msgJsonByte))
+
 			return true
 		}
 		return false
@@ -744,4 +745,10 @@ type meta struct {
 type listParams struct {
 	Limit int `form:"limit,default=10"`
 	Skip  int `form:"skip,default=0"`
+}
+
+// pubsub data 对象
+type subdata struct {
+	Code string `json:"code"`
+	Body string `json:"body"`
 }
