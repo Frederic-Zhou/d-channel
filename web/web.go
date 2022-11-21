@@ -638,9 +638,10 @@ func subTopic(c *gin.Context) {
 				return false
 			}
 
-			msgJsonByte, _ := json.Marshal([]string{
-				string(msg.From()),
-				string(msg.Data()),
+			msgJsonByte, _ := json.Marshal(map[string]string{
+				"seq":  string(msg.Seq()),
+				"form": string(msg.From()),
+				"data": string(msg.Data()),
 			})
 
 			c.SSEvent("message", string(msgJsonByte))
