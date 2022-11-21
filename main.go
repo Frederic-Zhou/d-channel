@@ -26,7 +26,7 @@ func main() {
 
 	err := os.Mkdir(*repo, 0755)
 
-	if err != nil && os.IsExist(err) {
+	if err != nil && !os.IsExist(err) {
 		panic(fmt.Errorf("failed to get temp dir: %s", err))
 	}
 
