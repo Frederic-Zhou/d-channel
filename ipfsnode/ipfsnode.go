@@ -38,6 +38,7 @@ var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
 const MessageProto = "/x/message"
+const RepoPath = "./repo"
 
 func Start(ctx context.Context) {
 	// Spawn a local peer using a temporary path, for testing purposes
@@ -72,17 +73,16 @@ func setupPlugins(externalPluginsPath string) error {
 }
 
 func createRepo() (string, error) {
-	repoPath := "./repo"
 
-	err := os.Mkdir(repoPath, 0755)
+	err := os.Mkdir(RepoPath, 0755)
 
 	if os.IsExist(err) {
-		return repoPath, nil
+		return RepoPath, nil
 	}
 
 	defer func() {
 		if err != nil {
-			os.Remove(repoPath)
+			os.Remove(RepoPath)
 		}
 	}()
 
@@ -100,12 +100,12 @@ func createRepo() (string, error) {
 	// cfg.Experimental.P2pHttpProxy = true
 
 	// Create the repo with the config
-	err = fsrepo.Init(repoPath, cfg)
+	err = fsrepo.Init(RepoPath, cfg)
 	if err != nil {
 		return "", fmt.Errorf("failed to init node: %s", err)
 	}
 
-	return repoPath, nil
+	return RepoPath, nil
 }
 
 /// ------ Spawning the node
