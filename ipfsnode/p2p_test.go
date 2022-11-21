@@ -14,7 +14,7 @@ func TestP2P(t *testing.T) {
 
 	ctx := context.Background()
 	var err error
-	_, ipfsNode, err := spawn(ctx)
+	_, ipfsNode, err := spawn(ctx, "./repo")
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
 	}

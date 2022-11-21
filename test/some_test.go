@@ -44,7 +44,7 @@ func TestNodeID(t *testing.T) {
 
 	ctx := context.Background()
 	var err error
-	ipfsnode.Start(ctx)
+	ipfsnode.Start(ctx, "./repo")
 
 	node := ipfsnode.IpfsNode
 

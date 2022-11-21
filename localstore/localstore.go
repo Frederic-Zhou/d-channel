@@ -1,6 +1,8 @@
 package localstore
 
 import (
+	"path/filepath"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -9,15 +11,19 @@ const localstorePath = "./localstore.db"
 
 var db *gorm.DB
 
-func InitDB() {
+func InitDB(repo string) {
 
 	var err error
-	db, err = gorm.Open(sqlite.Open(localstorePath), &gorm.Config{})
+	db, err = gorm.Open(sqlite.Open(filepath.Join(repo, localstorePath)), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&Follow{}, &Peer{}, &Message{})
+	db.AutoMigrate(
+		&Follow{},
+		&Peer{},
+		&Message{})
+
 	db.Debug()
 }
 

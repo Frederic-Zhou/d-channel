@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
 )
 
 const keysFile = "./secretkeys.key"
+
+var RootPath = "./repo"
 
 var secretKeys *SecretKeys
 
@@ -25,7 +28,7 @@ func GenSecretKey(password string) (*SecretKeys, error) {
 	//从文件中读取key
 	//如果文件不存在，创建
 	//如果存在，读取到keyJson，然后通过age.Parse方法，将文本的key转换为对象返回
-	keysfile, err := os.ReadFile(keysFile)
+	keysfile, err := os.ReadFile(filepath.Join(RootPath, keysFile))
 	keyJson := keyJson{}
 	if os.IsNotExist(err) { //如果不存在错误，创建新key，并写入到keyJson
 		identity, err := age.GenerateX25519Identity()

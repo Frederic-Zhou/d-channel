@@ -8,7 +8,6 @@ import (
 	"log"
 	"time"
 
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -38,12 +37,11 @@ var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
 const MessageProto = "/x/message"
-const RepoPath = "./repo"
 
-func Start(ctx context.Context) {
+func Start(ctx context.Context, repo string) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
-	IpfsAPI, IpfsNode, err = spawn(ctx)
+	IpfsAPI, IpfsNode, err = spawn(ctx, repo)
 
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
@@ -72,23 +70,7 @@ func setupPlugins(externalPluginsPath string) error {
 	return nil
 }
 
-func createRepo() (string, error) {
-
-	err := os.Mkdir(RepoPath, 0755)
-
-	if os.IsExist(err) {
-		return RepoPath, nil
-	}
-
-	defer func() {
-		if err != nil {
-			os.Remove(RepoPath)
-		}
-	}()
-
-	if err != nil {
-		return "", fmt.Errorf("failed to get temp dir: %s", err)
-	}
+func createRepo(repo string) (string, error) {
 
 	// Create a config with default options and a 2048 bit key
 	cfg, err := config.Init(io.Discard, 2048)
@@ -100,12 +82,12 @@ func createRepo() (string, error) {
 	// cfg.Experimental.P2pHttpProxy = true
 
 	// Create the repo with the config
-	err = fsrepo.Init(RepoPath, cfg)
+	err = fsrepo.Init(repo, cfg)
 	if err != nil {
 		return "", fmt.Errorf("failed to init node: %s", err)
 	}
 
-	return RepoPath, nil
+	return repo, nil
 }
 
 /// ------ Spawning the node
@@ -132,7 +114,7 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 var loadPluginsOnce sync.Once
 
 // Spawns a node to be used just for this run (i.e. creates a tmp repo)
-func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
+func spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, error) {
 	var onceErr error
 	loadPluginsOnce.Do(func() {
 		onceErr = setupPlugins("")
@@ -141,7 +123,7 @@ func spawn(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 		return nil, nil, onceErr
 	}
 	// Create a  Repo
-	repoPath, err := createRepo()
+	repoPath, err := createRepo(repo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create repo: %s", err)
 	}
