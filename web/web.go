@@ -69,8 +69,8 @@ func Start(addr string) error {
 	router.POST("/listenp2p", listenP2PHandler) //开启监听p2p，返回stream message
 	router.POST("/sendp2p", sendP2PHandler)     //发送p2p消息
 
-	router.POST("/pubtopic", pubTopic) //pubsub 发布topic
-	router.POST("/subtopic", subTopic) //pubsub 订阅topic
+	router.POST("/pubtopic", pubTopicHandler) //pubsub 发布topic
+	router.POST("/subtopic", subTopicHandler) //pubsub 订阅topic
 
 	router.GET("/index", indexHandler)
 
@@ -556,6 +556,7 @@ func listenFollowedsHandler(c *gin.Context) {
 
 }
 
+// 监听p2p消息处理
 func listenP2PHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -596,6 +597,7 @@ func listenP2PHandler(c *gin.Context) {
 
 }
 
+// 发送p2p数据处理
 func sendP2PHandler(c *gin.Context) {
 	// 封装发送socket
 
@@ -613,7 +615,8 @@ func sendP2PHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 }
 
-func subTopic(c *gin.Context) {
+// 订阅topic
+func subTopicHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	topic := c.DefaultPostForm("topic", "")
@@ -654,7 +657,8 @@ func subTopic(c *gin.Context) {
 
 }
 
-func pubTopic(c *gin.Context) {
+// 发布Topic消息
+func pubTopicHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	topic := c.DefaultPostForm("topic", "")
@@ -674,6 +678,7 @@ func pubTopic(c *gin.Context) {
 
 }
 
+// 首页处理函数
 func indexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index", gin.H{})
 }
@@ -734,6 +739,7 @@ type meta struct {
 	Next string   `json:"next" form:"next"`
 }
 
+// 列表查询常规参数
 type listParams struct {
 	Limit int `form:"limit,default=10"`
 	Skip  int `form:"skip,default=0"`
