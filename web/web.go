@@ -99,6 +99,7 @@ func ipnsHandler(c *gin.Context) {
 func ipfsHandler(c *gin.Context) {
 	cid := c.Param("cid")
 	fpath := c.Param("path")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
