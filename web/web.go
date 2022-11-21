@@ -69,6 +69,9 @@ func Start(addr string) error {
 	router.POST("/listenp2p", listenP2PHandler) //开启监听p2p，返回stream message
 	router.POST("/sendp2p", sendP2PHandler)     //发送p2p消息
 
+	router.POST("/pubtopic", pubTopic) //pubsub 发布topic
+	router.POST("/subtopic", subTopic) //pubsub 订阅topic
+
 	router.GET("/index", indexHandler)
 
 	return router.Run(addr)
@@ -79,7 +82,10 @@ func ipnsHandler(c *gin.Context) {
 	ns := c.Param("ns")
 	fpath := c.Param("path")
 
-	fullPath, err := IpfsAPI.Name().Resolve(context.Background(), ns+fpath)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	fullPath, err := IpfsAPI.Name().Resolve(ctx, ns+fpath)
 
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
@@ -93,15 +99,17 @@ func ipnsHandler(c *gin.Context) {
 func ipfsHandler(c *gin.Context) {
 	cid := c.Param("cid")
 	fpath := c.Param("path")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	nd, err := IpfsAPI.Unixfs().Get(context.Background(), path.New(cid+fpath))
+	nd, err := IpfsAPI.Unixfs().Get(ctx, path.New(cid+fpath))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
 		return
 	}
 	defer func() {
 		nd.Close()
-		_ = IpfsAPI.Pin().Add(context.Background(), path.New(cid+fpath))
+		_ = IpfsAPI.Pin().Add(ctx, path.New(cid+fpath))
 	}()
 
 	fs := []string{}
@@ -166,8 +174,11 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if !postparams.Init {
-		next, err := IpfsAPI.Name().Resolve(context.Background(), ipnskey.Path().String())
+		next, err := IpfsAPI.Name().Resolve(ctx, ipnskey.Path().String())
 		if err != nil {
 			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
 			return
@@ -215,14 +226,14 @@ func publishHandler(c *gin.Context) {
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 
 	/// --- 7. 将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
-	cid, err := IpfsAPI.Unixfs().Add(context.Background(), files.NewMapDirectory(postMap))
+	cid, err := IpfsAPI.Unixfs().Add(ctx, files.NewMapDirectory(postMap))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("add err: %s", err.Error())))
 		return
 	}
 
 	/// --- 8. 发布新的cid到self IPNS
-	nsEntry, err := IpfsAPI.Name().Publish(context.Background(), cid, options.Name.Key(ipnskey.Name()))
+	nsEntry, err := IpfsAPI.Name().Publish(ctx, cid, options.Name.Key(ipnskey.Name()))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
 		return
@@ -286,7 +297,10 @@ func uploadFiles(postparams *postParams, postMap map[string]files.Node, tos []ag
 func newIpnsKeyHandler(c *gin.Context) {
 	// options.NamePublishOption
 	nsname := c.DefaultPostForm("nsname", "")
-	key, err := IpfsAPI.Key().Generate(context.Background(), nsname)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	key, err := IpfsAPI.Key().Generate(ctx, nsname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -298,7 +312,9 @@ func newIpnsKeyHandler(c *gin.Context) {
 // 移除ipfs key
 func removeIpnsKeyHandler(c *gin.Context) {
 	nsname := c.DefaultPostForm("nsname", "")
-	key, err := IpfsAPI.Key().Remove(context.Background(), nsname)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	key, err := IpfsAPI.Key().Remove(ctx, nsname)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -310,7 +326,9 @@ func removeIpnsKeyHandler(c *gin.Context) {
 // 列出所有IPFS key，也就是列出所有IPNS
 func listIpnsKeyHandler(c *gin.Context) {
 
-	keys, err := IpfsAPI.Key().List(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	keys, err := IpfsAPI.Key().List(ctx)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 	}
@@ -557,10 +575,11 @@ func listenP2PHandler(c *gin.Context) {
 
 	}(readchan)
 
+	var err error
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-readchan; ok {
 			log.Println("read from chan", string(msg))
-			err := localstore.WriteMessage(string(msg))
+			err = localstore.WriteMessage(string(msg))
 			log.Println("write to localstore", string(msg), err)
 			if err != nil {
 				c.SSEvent("message", err.Error())
@@ -572,6 +591,8 @@ func listenP2PHandler(c *gin.Context) {
 		}
 		return false
 	})
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 
 }
 
@@ -589,7 +610,67 @@ func sendP2PHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ResponseJsonFormat(0, "ok"))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
+}
+
+func subTopic(c *gin.Context) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	topic := c.DefaultPostForm("topic", "")
+	if topic == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "nedd topic"))
+		return
+	}
+
+	sub, err := IpfsAPI.PubSub().Subscribe(ctx, topic)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+	defer sub.Close()
+
+	c.Stream(func(w io.Writer) bool {
+		var msg icore.PubSubMessage
+		if msg, err = sub.Next(ctx); err == nil {
+
+			if err != nil {
+				c.SSEvent("message", err.Error())
+				return false
+			}
+
+			msgJsonByte, _ := json.Marshal([]string{
+				string(msg.From()),
+				string(msg.Data()),
+			})
+
+			c.SSEvent("message", string(msgJsonByte))
+			return true
+		}
+		return false
+	})
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+
+}
+
+func pubTopic(c *gin.Context) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	topic := c.DefaultPostForm("topic", "")
+	msg := c.DefaultPostForm("message", "")
+	if topic == "" || msg == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "nedd topic and message"))
+		return
+	}
+
+	err := IpfsAPI.PubSub().Publish(ctx, topic, []byte(msg))
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
+
 }
 
 func indexHandler(c *gin.Context) {
@@ -607,7 +688,9 @@ func ResponseJsonFormat(code int8, data interface{}) responseJson {
 
 // 获得IPNS的key对象，如果传递的名称没有对应的key，默认返回self
 func getIpnsKey(name string) (icore.Key, error) {
-	ipnsKeys, err := IpfsAPI.Key().List(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ipnsKeys, err := IpfsAPI.Key().List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +701,7 @@ func getIpnsKey(name string) (icore.Key, error) {
 		}
 	}
 
-	return IpfsAPI.Key().Self(context.Background())
+	return IpfsAPI.Key().Self(ctx)
 }
 
 // json返回值对象
