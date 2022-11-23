@@ -1,11 +1,13 @@
 package ipfsnode
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"path/filepath"
@@ -16,6 +18,8 @@ import (
 	// peer "github.com/libp2p/go-libp2p-peer"
 
 	p2pcore "github.com/libp2p/go-libp2p/core"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -36,12 +40,13 @@ import (
 var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
-const MessageProto = "/x/message"
+const P2PMessageProto = "/x/message"
+const StreamMessageProto = "/x/message"
 
 func Start(ctx context.Context, repo string) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
-	IpfsAPI, IpfsNode, err = spawn(ctx, repo)
+	IpfsAPI, IpfsNode, err = Spawn(ctx, repo)
 
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
@@ -114,7 +119,7 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 var loadPluginsOnce sync.Once
 
 // Spawns a node to be used just for this run (i.e. creates a tmp repo)
-func spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, error) {
+func Spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, error) {
 	var onceErr error
 	loadPluginsOnce.Do(func() {
 		onceErr = setupPlugins("")
@@ -246,4 +251,89 @@ func SendMessage(peerID string, message string, port string, proto string) (err 
 
 	return
 
+}
+
+func SetStreamHandler(readchan chan string) {
+	hosts := []host.Host{
+		IpfsNode.DHT.LAN.Host(),
+		IpfsNode.DHT.WAN.Host(),
+	}
+
+	for _, host := range hosts {
+		host.SetStreamHandler(StreamMessageProto, func(s network.Stream) {
+			err := readHelloProtocol(readchan, s)
+			if err != nil {
+				s.Reset()
+			} else {
+				s.Close()
+			}
+		})
+
+	}
+
+	// return *host.InfoFromHost(lanHost), *host.InfoFromHost(wanHost)
+
+}
+
+func readHelloProtocol(readchan chan string, s network.Stream) error {
+	// TO BE IMPLEMENTED: Read the stream and print its content
+	buf := bufio.NewReader(s)
+	message, err := buf.ReadString('\n')
+	if err != nil {
+		return err
+	}
+
+	connection := s.Conn()
+
+	data := fmt.Sprintf("Message from '%s': %s", connection.RemotePeer().String(), message)
+
+	log.Println(data)
+
+	readchan <- data
+	return nil
+}
+
+func NewStream(ctx context.Context, peerid peer.ID, message string) (err error) {
+
+	var targetNodeInfo peer.AddrInfo
+
+	targetNodeInfo, err = IpfsNode.DHT.FindPeer(ctx, peerid)
+	if err != nil {
+		return
+	}
+
+	hosts := []host.Host{
+		IpfsNode.DHT.LAN.Host(),
+		IpfsNode.DHT.WAN.Host(),
+	}
+
+	for i, host := range hosts {
+
+		err = host.Connect(context.Background(), targetNodeInfo)
+		if err != nil {
+			log.Printf("%d Sending message... %v \n", i, err)
+			continue
+		}
+
+		var stream network.Stream
+		// TO BE IMPLEMENTED: Open stream and send message
+		stream, err = host.NewStream(context.Background(), targetNodeInfo.ID, StreamMessageProto)
+		if err != nil {
+			continue
+		}
+
+		if !strings.HasSuffix(message, "\n") {
+			message += "\n"
+		}
+
+		_, err = stream.Write([]byte(message))
+		if err != nil {
+			continue
+		}
+		return
+		//当第一个lan host 走到发送完成，就返回。如果第一个lan host 在中间任何位置 continue 略过，
+		// 进入wan host处理，wan host 处理过程中 任何错误 continue，则会退出循环，返回当前错误。
+
+	}
+	return
 }

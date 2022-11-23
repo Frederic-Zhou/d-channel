@@ -69,6 +69,9 @@ func Start(addr string) error {
 	router.POST("/listenp2p", listenP2PHandler) //开启监听p2p，返回stream message
 	router.POST("/sendp2p", sendP2PHandler)     //发送p2p消息
 
+	router.POST("/setstream", setStreamHandler) //开启监听p2p，返回stream message
+	router.POST("/newstream", newStreamHandler) //发送p2p消息
+
 	router.POST("/pubtopic", pubTopicHandler) //pubsub 发布topic
 	router.POST("/subtopic", subTopicHandler) //pubsub 订阅topic
 
@@ -570,7 +573,7 @@ func listenP2PHandler(c *gin.Context) {
 			ctx,
 			readchan,
 			c.DefaultPostForm("port", "8090"),
-			ipfsnode.MessageProto,
+			ipfsnode.P2PMessageProto,
 		); err != nil {
 			log.Println(err.Error())
 		}
@@ -606,7 +609,54 @@ func sendP2PHandler(c *gin.Context) {
 		c.DefaultPostForm("peerid", ""),
 		c.DefaultPostForm("body", ""),
 		c.DefaultPostForm("port", "8091"),
-		ipfsnode.MessageProto,
+		ipfsnode.P2PMessageProto,
+	)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
+}
+
+func setStreamHandler(c *gin.Context) {
+
+	var readchan = make(chan string, 10)
+
+	ipfsnode.SetStreamHandler(readchan)
+
+	var err error
+	c.Stream(func(w io.Writer) bool {
+		if msg, ok := <-readchan; ok {
+			log.Println("read from chan", msg)
+			err = localstore.WriteMessage(msg)
+			log.Println("write to localstore", msg, err)
+			if err != nil {
+				c.SSEvent("message", err.Error())
+				return false
+			}
+			c.SSEvent("message", msg)
+			log.Println("send to SSEvent", msg)
+			return true
+		}
+		return false
+	})
+
+	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+
+}
+
+// 发送stream数据处理
+func newStreamHandler(c *gin.Context) {
+	// 封装发送socket
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	peerid := peer.ID(c.DefaultPostForm("peerid", ""))
+	err := ipfsnode.NewStream(ctx,
+		peerid,
+		c.DefaultPostForm("body", ""),
 	)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))

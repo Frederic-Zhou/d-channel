@@ -1,7 +1,8 @@
-package ipfsnode
+package test
 
 import (
 	"context"
+	"d-channel/ipfsnode"
 	"fmt"
 	"testing"
 
@@ -14,10 +15,13 @@ func TestP2P(t *testing.T) {
 
 	ctx := context.Background()
 	var err error
-	_, ipfsNode, err := spawn(ctx, "./repo")
+
+	ipfsnode.Start(ctx, "./repo")
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
 	}
+
+	ipfsNode := ipfsnode.IpfsNode
 
 	// fmt.Println(ipfsAPI, ipfsNode)
 
