@@ -293,11 +293,15 @@ func readHelloProtocol(readchan chan string, s network.Stream) error {
 	return nil
 }
 
-func NewStream(ctx context.Context, peerid peer.ID, message string) (err error) {
+func NewStream(ctx context.Context, peeridstr string, message string) (err error) {
 
 	var targetNodeInfo peer.AddrInfo
 
-	targetNodeInfo, err = IpfsNode.DHT.FindPeer(ctx, peerid)
+	pid, err := peer.Decode(peeridstr)
+	if err != nil {
+		return
+	}
+	targetNodeInfo, err = IpfsAPI.Dht().FindPeer(ctx, pid)
 	if err != nil {
 		return
 	}

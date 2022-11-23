@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 func TestStream(t *testing.T) {
@@ -21,12 +21,12 @@ func TestStream(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	_, node2, err := ipfsnode.Spawn(ctx, "./node2")
+	api2, node2, err := ipfsnode.Spawn(ctx, "./node2")
 	if err != nil {
 		panic(err)
 	}
 
-	host1 := node1.DHT.LAN.Host()
+	host1 := node1.DHT.WAN.Host()
 
 	host1.SetStreamHandler("/hello/1.0.0", func(s network.Stream) {
 		log.Printf("/hello/1.0.0 stream created")
@@ -38,10 +38,18 @@ func TestStream(t *testing.T) {
 		}
 	})
 
-	host2 := node2.DHT.LAN.Host()
+	host2 := node2.DHT.WAN.Host()
 	for {
+		pid, _ := peer.Decode(host1.ID().String())
+		peer, err := api2.Dht().FindPeer(ctx, pid)
+		if err != nil {
+			log.Println("find Peer:", err, host1.ID().String(), host2.ID().String())
+			continue
+		}
 
-		err = host2.Connect(context.Background(), *host.InfoFromHost(host1))
+		log.Println("peer:", peer)
+
+		err = host2.Connect(context.Background(), peer)
 		if err != nil {
 			log.Println(" Sending message...", err)
 			return

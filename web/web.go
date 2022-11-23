@@ -653,9 +653,8 @@ func newStreamHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	peerid := peer.ID(c.DefaultPostForm("peerid", ""))
 	err := ipfsnode.NewStream(ctx,
-		peerid,
+		c.DefaultPostForm("peerid", ""),
 		c.DefaultPostForm("body", ""),
 	)
 	if err != nil {
