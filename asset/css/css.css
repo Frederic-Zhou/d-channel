@@ -239,6 +239,8 @@ div.dib{*display:inline;*zoom:1;}
 .vmo:before{content:'';display:inline-block;height:100%;vertical-align:middle;margin-right:-0.25em;/*微调整空格*/}
 .vm{display:inline-block;vertical-align:middle;}
 .fvm{display:flex;justify-content:center;align-items:center;}
+/*文字溢出显示省略号*/
+.el{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;width:100%;}
 
 .wp{width:100%;max-width:760px;min-width:0px;height:auto;max-height:none;min-height:0px;margin-left:auto;margin-right:auto;}
 .mainc{width:100%;height:100%;}

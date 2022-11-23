@@ -14,8 +14,8 @@
 
 var ice = ice || {};
 ice.view = function(config, options, msgList) {
-	var regs = /\{\{([\w\W]*?)\}\}/g;
-	var reg = /\{\{([\w\W]*?)\}\}/;
+	var regs = /\{%([\w\W]*?)%\}/g;
+	var reg = /\{%([\w\W]*?)%\}/;
 	var _this;
 	//克隆对象
 	function cloneObj(obj){

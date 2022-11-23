@@ -52,3 +52,13 @@ function layconfirm(str,fn1,fn2){
 		if(typeof(fn2)=='function'){fn2();}
 	});
 }
+function layinput(title,val,fn){
+	return layer.prompt({
+		'formType':0,
+		value:val,
+		title:title,
+	},function(value,idx){
+		if(typeof(fn)=='function') fn(value);
+		layer.close(idx)
+	});
+}
