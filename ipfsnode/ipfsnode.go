@@ -83,7 +83,7 @@ func createRepo(repo string) (string, error) {
 	}
 
 	cfg.Experimental.Libp2pStreamMounting = true
-	// cfg.Experimental.P2pHttpProxy = true
+	cfg.Experimental.P2pHttpProxy = true
 
 	// Create the repo with the config
 	err = fsrepo.Init(repo, cfg)
