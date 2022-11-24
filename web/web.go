@@ -66,8 +66,8 @@ func Start(addr string) error {
 	router.POST("/unfollow", unFollowHandler)           // 删除关注
 	router.POST("/removepeer", removePeertHandler)      // 删除好友
 
-	router.POST("/listenp2p", listenP2PHandler) //开启监听p2p，返回stream message
-	router.POST("/sendp2p", sendP2PHandler)     //发送p2p消息
+	router.POST("/listenp2p", listenP2PHandler) //（优先使用 setstream）开启监听p2p，返回stream message
+	router.POST("/sendp2p", sendP2PHandler)     //（优先使用 newstream）发送p2p消息
 
 	router.POST("/setstream", setStreamHandler) //开启监听p2p，返回stream message
 	router.POST("/newstream", newStreamHandler) //发送p2p消息
@@ -792,10 +792,4 @@ type meta struct {
 type listParams struct {
 	Limit int `form:"limit,default=10"`
 	Skip  int `form:"skip,default=0"`
-}
-
-// pubsub data 对象
-type subdata struct {
-	Code string `json:"code"`
-	Body string `json:"body"`
 }
