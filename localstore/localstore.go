@@ -36,14 +36,14 @@ func AddFollow(name, ns string) error {
 }
 
 func UnFollow(id string) error {
-	return db.Delete(&Follow{}, id).Error
+	return db.Unscoped().Delete(&Follow{}, id).Error
 }
 
 func AddPeer(name, recipient, pubkey, peerID string) error {
 	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey, PeerID: peerID}).Error
 }
 func RemovePeer(id string) error {
-	return db.Delete(&Peer{}, id).Error
+	return db.Unscoped().Delete(&Peer{}, id).Error
 }
 
 func (f *Follow) Save() error {
