@@ -17,7 +17,6 @@ import (
 
 	// peer "github.com/libp2p/go-libp2p-peer"
 
-	p2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -41,7 +40,7 @@ var IpfsAPI icore.CoreAPI
 var IpfsNode *core.IpfsNode
 
 const P2PMessageProto = "/x/message"
-const StreamMessageProto = "/x/message"
+const StreamMessageProto = "/chat/1.0"
 
 func Start(ctx context.Context, repo string) {
 	// Spawn a local peer using a temporary path, for testing purposes
@@ -144,14 +143,14 @@ func Spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, err
 }
 
 // / -------
-func ListenLocal(ctx context.Context, readchan chan []byte, port string, proto string) (err error) {
+func ListenLocal(ctx context.Context, readchan chan []byte, port string) (err error) {
 
 	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port))
 	if err != nil {
 		return
 	}
 
-	listener, err := IpfsNode.P2P.ForwardRemote(ctx, p2pcore.ProtocolID(proto), addr, true)
+	listener, err := IpfsNode.P2P.ForwardRemote(ctx, P2PMessageProto, addr, true)
 	if err != nil {
 		return
 	}
@@ -213,7 +212,7 @@ var sendLock sync.Mutex
 
 // 发送过程，必须是非并发的
 // 由于接受端读取采用io.copy，因此发送端 采用连接、发送、关闭，一次连接发送一次数据。
-func SendMessage(peerID string, message string, port string, proto string) (err error) {
+func SendMessage(peerID string, message string, port string) (err error) {
 
 	sendLock.Lock()
 	defer sendLock.Unlock()
@@ -230,7 +229,7 @@ func SendMessage(peerID string, message string, port string, proto string) (err 
 		return
 	}
 
-	l, err := IpfsNode.P2P.ForwardLocal(ctx, peerid, p2pcore.ProtocolID(proto), addr)
+	l, err := IpfsNode.P2P.ForwardLocal(ctx, peerid, P2PMessageProto, addr)
 	if err != nil {
 		return
 	}

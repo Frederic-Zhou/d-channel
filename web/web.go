@@ -573,7 +573,6 @@ func listenP2PHandler(c *gin.Context) {
 			ctx,
 			readchan,
 			c.DefaultPostForm("port", "8090"),
-			ipfsnode.P2PMessageProto,
 		); err != nil {
 			log.Println(err.Error())
 		}
@@ -609,7 +608,6 @@ func sendP2PHandler(c *gin.Context) {
 		c.DefaultPostForm("peerid", ""),
 		c.DefaultPostForm("body", ""),
 		c.DefaultPostForm("port", "8091"),
-		ipfsnode.P2PMessageProto,
 	)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
