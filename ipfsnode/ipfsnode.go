@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -284,11 +285,15 @@ func readHelloProtocol(readchan chan string, s network.Stream) error {
 
 	connection := s.Conn()
 
-	data := fmt.Sprintf("Message from '%s': %s", connection.RemotePeer().String(), message)
-
-	log.Println(data)
-
-	readchan <- data
+	data, err := json.Marshal(map[string]string{
+		"from":    connection.RemotePeer().String(),
+		"message": message,
+	})
+	if err != nil {
+		return err
+	}
+	log.Println(string(data))
+	readchan <- string(data)
 	return nil
 }
 
