@@ -62,3 +62,9 @@ function layinput(title,val,fn){
 		layer.close(idx)
 	});
 }
+
+
+
+function end_with(str,suf){
+	return str.indexOf(suf, str.length - suf.length) !== -1;
+}

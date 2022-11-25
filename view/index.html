@@ -14,105 +14,88 @@
 
 </head>
 
-<body>
-<div class="w3-panel w3-blue w3-card-4 mt0">
-	<p>这里是一段提示文字.</p>
-</div>
-
-<div class="wrap mb25">
-<div class="w3-border">
-	<div class="w3-container w3-blue">
-		<h2>发表内容</h2>
-	</div>
-	<form class="w3-container" id="publish_form" onsubmit="publish_content();return false;">
-		<div class="w3-section">
-			<label>ipfs 键名：</label>
-			<input class="w3-input" name="keyname" type="text" />
-		</div>
-		<div class="w3-section">
-			<label>发送目标：</label>
-			<label><input type="checkbox" class="w3-check" id="sendall" value="1">所有人</label>
-			<input class="w3-input" name="to" type="text" placeholder="留空则私有" />
-		</div>
-		<div class="w3-section">
-			<label>内容类型：</label>
-			<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
-			<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
-		</div>
-		<div class="w3-section">
-			<label>内容：</label>
-			<textarea class="w3-input" name="body"></textarea>
-		</div>
-		<div class="w3-section">
-			<label>附件上传：</label>
-			<input type="file" name="uploads" id="upfile" />
-			<!--<input type="hidden" name="init" value="true" />-->
-		</div>
-		<div class="w3-section">
-			<button type="submit" class="w3-btn w3-blue">发表内容</button>
-		</div>
-	</form>
-</div>
-</div>
-
-
-<div class="wrap">
-<div class="w3-border">
-	<div class="w3-container w3-blue">
-		<h2>获取ipns/ipfs内容</h2>
-	</div>
-	<form class="w3-container" onsubmit="get_content(this);return false;">
-		<div class="w3-section">
-			<label>KEY</label>
-			<input class="w3-input" name="hash" type="text" />
-		</div>
-		<div class="w3-section">
-			<label><input type="radio" class="w3-radio" name="type" value="ipns">IPNS</label>
-			<label><input type="radio" class="w3-radio" name="type" value="ipfs">IPFS</label>
-			<button type="submit" class="w3-btn w3-blue">GET</button>
-		</div>
-	</form>
-</div>
+<body id="app">
+<div class="w3-panel w3-blue w3-card-4 mt0 p10">
+	<p class="m0">peerid：{%peerid%}</p>
+	<p class="el m0">pubkey：{%pubkey%}</p>
+	<p class="m0">Recipient：{%recipient%}</p>
 </div>
 
 <div class="wrap mt20">
 	<div class="row col-sp12">
-		<div class="w6">
-			<div class="w3-teal p5">ipns(ipfskey)</div>
-			<ul class="w3-ul w3-border bk" id="listipfskey"></ul>
-		</div>
-		<div class="w6">
-			<div class="w3-teal p5">ipns list</div>
-			<ul class="w3-ul w3-border bk" id="list_ipns"></ul>
-		</div>
-	</div>
-	<div class="row col-sp8">
 		<div class="w4">
-			<div class="w3-teal p5">ipfs body</div>
-			<ul class="w3-ul w3-border bk" id="ipfs_body"></ul>
+			<div class="w3-blue p5">ipnskeys</div>
+			<ul class="w3-ul w3-border bk">
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增ipnskey</a></li>
+				<li i-for="ipnskeyslist">
+					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" class="clink">{%item[1]%}</a>
+					&nbsp; <a i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
+					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
+				</li>
+			</ul>
+			
+			<div class="w3-blue p5 mt10">follows</div>
+			<ul class="w3-ul w3-border bk">
+				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" class="clink">{%item.ns%}</a>
+				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
+				</li>
+			</ul>
+			<div class="w3-blue p5 mt10">peers</div>
+			<ul class="w3-ul w3-border bk">
+				<li i-for="peerslist">{%item.name%}</li>
+			</ul>
 		</div>
-		<div class="w4">
-			<div class="w3-teal p5">ipfs post</div>
-			<ul class="w3-ul w3-border bk" id="post_ipfs"></ul>
-		</div>
-		<div class="w4">
-			<div class="w3-teal p5">ipfs meta</div>
-			<ul class="w3-ul w3-border bk" id="meta_to"></ul>
-			<ul class="w3-ul w3-border bk" id="meta_next"></ul>
-		</div>
-	</div>
-	<div class="row col-sp12">
-		<div class="w6">
-			<div class="w3-teal p5">localstore</div>
-			<ul class="w3-ul w3-border bk" id="localstore"></ul>
-		</div>
-		
-		<div class="w6">
-			<div class="w3-teal p5">listenfolloweds</div>
-			<ul class="w3-ul w3-border bk" id="listenfolloweds"></ul>
+		<div class="w8">
+			<div class="w3-border">
+				<div class="w3-container w3-blue"><h3>发表内容</h3></div>
+				<form class="w3-container" id="publish_form" onsubmit="publish_content(this);return false;">
+					<div class="w3-section">
+						<label>ipfs ns：</label>
+						<select name="nsname" class="w3-select">
+							<option i-for="ipnskeyslist" value="{%item[0]%}">{%item[0]%}</option>
+						</select>
+					</div>
+					<div class="w3-section">
+						<label>发送目标：</label>
+						<label><input type="radio" class="w3-radio" name="to0" value="@all" checked>所有人</label>
+						<label><input type="radio" class="w3-radio" name="to0" value="@me" >仅自己可见</label>
+						<input class="w3-input" name="to" type="text" placeholder="其它发送目标" />
+					</div>
+					<div class="w3-section">
+						<label>内容类型：</label>
+						<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
+						<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
+					</div>
+					<div class="w3-section">
+						<label>内容：</label>
+						<textarea class="w3-input" name="body"></textarea>
+					</div>
+					<div class="w3-section">
+						<label>附件上传：</label>
+						<input type="file" name="uploads" id="upfile" />
+						<!--<input type="hidden" name="init" value="true" />-->
+					</div>
+					<div class="w3-section">
+						<button type="submit" class="w3-btn w3-blue">发表内容</button>
+					</div>
+				</form>
+			</div>
+
+			<div class="w3-border mt10">
+				<div class="w3-container w3-blue"><h3>内容</h3></div>
+				<ul class="w3-ul bk">
+					<li i-for="postlist">
+						{%item.dt.body%}
+						<p i-if="{%item.dt.attachments%}">{%item.dt.attachments%}</p>
+					</li>
+				</ul>
+			</div>
 		</div>
 	</div>
 </div>
+
+
+
 
 
 </body>
@@ -136,97 +119,10 @@
 
 
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
+<script type="text/javascript" src="/asset/js/iceView.js"></script>
 <script type="text/javascript" src="/asset/js/fn.js"></script>
 <script type="text/javascript">
 
-function publish_content(f){
-	var iptfile=document.getElementById('upfile');
-	var flen=iptfile.files.length;
-	var formdata=new FormData(document.getElementById('publish_form'));
-	if(flen<1){
-		formdata.delete('uploads');
-	}
-	if($('#sendall').prop('checked')){
-		formdata.delete('to');
-	}
-	loading();
-	$.ajax({
-		url:'/publish',
-		type:"POST",
-		data:formdata,
-		dataType:'json',
-		processData:false,
-		contentType:false,
-		error:function(){hideload();alerterr('发布失败');},
-		success:function(res){
-			hideload()
-			if(res.code=='1'){
-				alertok('发布成功!')
-			}else{
-				alerterr(res.data)
-			}
-		}
-	})
-}
-function get_ipfs_content(path){
-	$.get(path,function(res){
-		$('#post_ipfs').html(res);
-	},'text')
-}
-
-function get_ipfs_meta(path){
-	$.get(path,function(res){
-		$('#meta_to').html('<li><b>next:</b><a href="javascript:;" onclick="get_ipfs_body(\''+res.next+'/\')">'+res.next+'/</a></li>');
-		var htm=''
-		$.each(res.to,function(k,v){
-			htm+='<li><a href="javascript:;">'+k+':'+v+'</a></li>'
-		});
-		$('#meta_next').html('<li><b>to:</b></li>'+htm);
-	},'json')
-}
-
-function get_ipfs_body(key){
-	$.get(key,function(res){
-		var htm=''
-		$.each(res,function(k,v){
-			if(v=='meta.json'){
-				htm+='<li><a href="javascript:;" onclick="get_ipfs_meta(\''+key+v+'\');">'+k+':'+v+'</a></li>'
-			}else{
-				htm+='<li><a href="javascript:;" onclick="get_ipfs_content(\''+key+v+'\');">'+k+':'+v+'</a></li>'
-			}
-		});
-		$('#ipfs_body').html('<li><b>ipfs:</b>'+key+'</li>'+htm);
-	},'json')
-}
-
-function get_ipns_list(key){
-	$.get(key+'/',function(res){
-		if(res.code!='1'){return;}
-		var htm=''
-		htm+='<li><a href="javascript:;" onclick="get_ipfs_body(\''+res.data.path+'\');">'+res.data.path+'</a></li>'
-		$('#list_ipns').html(htm);
-	},'json')
-}
-function list_ipfskey(){
-	$.get('/listipfskey',function(res){
-		if(res.code!='1'){return;}
-		var htm=''
-		$.each(res.data,function(k,v){
-			htm+='<li><a href="javascript:;" onclick="get_ipns_list(\''+v[1]+'\');">'+v[0]+': '+v[1]+'</a></li>'
-		});
-		$('#listipfskey').html(htm);
-	},'json')
-}
-function list_localstore(){
-	$.get('/getlocalstore',function(res){
-		if(res.code!='1'){return;}
-		var htm=''
-		$.each(res.data,function(k,v){
-			htm+='<li>'+k+': '+v+'</li>'
-		});
-		$('#localstore').html(htm);
-	},'json')
-}
 
 var evtSource=null;
 function list_follows(){
@@ -255,25 +151,6 @@ function list_follows(){
 	},'json')*/
 }
 
-function init_getkey(){
-	$.get('/getsecretrecipient',function(res){
-		if(!res['code']){
-			$('#pwd_dialog').show();
-		}else{
-			list_ipfskey();
-			list_localstore();
-			//list_follows();
-		}
-	},'json')
-	/*var localkey=sessionStorage.getItem('secretkey');
-	if(!localkey){
-		$('#pwd_dialog').show();
-	}else{
-		list_ipfskey();
-		list_localstore();
-		list_follows();
-	}*/
-}
 function set_local_pwd(f){
 	var pwd=$.trim(f.password.value);
 	if(!pwd){
@@ -285,15 +162,218 @@ function set_local_pwd(f){
 		if(res.code=='1'){
 			sessionStorage.setItem('secretkey',res.data);
 			$('#pwd_dialog').hide();
-			list_ipfskey();
-			list_localstore();
+			init_info();
 		}else{
 			alerterr(res.data)
 		}
 	},'json');
 }
+
+
+
+
+
+var iv=ice.view('#app',{
+	followed_ns:[],
+	postlist:[],
+	error_ipns_list:[],
+	getrecipient:function(){
+		var zs=this;
+		$.get('/getrecipient',null,null,'json').then(function(res){
+			if(res['code']){
+				zs.recipient=res.data;
+				zs.getpubkey()
+			}else{
+				$('#pwd_dialog').show();
+			}
+		});
+	},
+	getpubkey:function(){
+		var zs=this;
+		$.get('/getpubkey',function(res){
+			if(res['code']){
+				zs.peerid=res['data']['peerid'];
+				zs.pubkey=res['data']['pubkey'];
+			}
+			zs.load_all()
+		},'json')
+	},
+	listipnskey:function(){
+		var zs=this;
+		$.ajax({
+			url:'/listipnskey',
+			timeout:3000,
+			success:function(res){
+				if(!res['code']){alerterr(res['data']);return}
+				zs.ipnskeyslist=res['data'];
+			}
+		})
+	},
+	rm_ipnskey:function(nsname){
+		var zs=this;
+		layconfirm('是否要删除【'+nsname+'】？',function(){
+			$.post('/reomveipnskey',{'nsname':nsname},function(res){
+				if(!res['code']){alerterr(res['data']);return}
+				zs.listipnskey();
+			},'json');
+		})
+	},
+	getfollows:function(){
+		var zs=this;
+		zs.followed_ns=[];
+		$.get('/getfollows',function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			$.each(res['data'],function(k,v){
+				zs.followed_ns.push(v.ns)
+			})
+			zs.followslist=res['data']
+		},'json')
+	},
+	follow:function(name,ns){
+		var zs=this;
+		$.post('/follow',{'name':name,'ns':ns},function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			zs.getfollows();
+		},'json');
+	},
+	unfollow:function(id){
+		var zs=this;
+		layconfirm('是否要取消关注？',function(){
+			$.post('/unfollow',{'id':id},function(res){
+				if(!res['code']){alerterr(res['data']);return}
+				zs.getfollows();
+				zs.listipnskey();
+			},'json');
+		})
+	},
+	getpeers:function(){
+		var zs=this;
+		$.get('/getpeers',function(res){
+			if(!res['code']){alerterr(res['data']);return}
+		},'json')
+	},
+	load_all:function(){
+		this.listipnskey();
+		this.getfollows();
+		this.getpeers();
+	},
+	load_ipns:function(url){
+		if(!url) return;
+		if(url.indexOf('/ipns/')<0) return;
+		if(!end_with(url,'/')) url=url+'/';
+		var zs=this;
+		$.ajax({
+			url:url,
+			timeout:3000,
+			success:function(res){
+				if(!res['code']){alerterr(res['data']);return}
+				zs.load_ipfs(res['data']['path']);
+			},
+			error:function(){
+				zs.error_ipns_list.push(url);
+				zs.error_ipns_list=$.unique(zs.error_ipns_list);
+			}
+		});
+	},
+	load_ipfs:function(url){
+		if(!url) return;
+		if(url.indexOf('/ipfs/')<0) return;
+		if(!end_with(url,'/')) url=url+'/';
+		//var nsk=ipns.replace(/\//g,'');
+		var exist=0;
+		$.each(this.postlist,function(k,v){
+			if(v['url']==url){
+				exist=1;return false;
+			}
+		});
+		if(exist) return;
+		var zs=this;
+		$.get(url+'/post.json',function(res){
+			zs.postlist.push({'url':url,'dt':res})
+		},'json').then(function(){
+			$.get(url+'/meta.json',function(res){
+				if(res['next']){
+					zs.load_ipfs(res['next']);
+				}
+			},'json')
+		});
+	}
+});
+function dlg_new_ipnskey(){
+	layinput('请输入ipnskey的nsname','',function(v){
+		v=$.trim(v);
+		if(!v){msgerr('未输入');return;}
+		$.post('/newipnskey',{'nsname':v},function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			iv.data.listipnskey()
+		})
+	})
+}
+function chk_ipns_init(nm,fn){
+	var iurl=''
+	$.each(iv.data.ipnskeyslist,function(k,v){
+		if(v[0]==nm){
+			iurl=v[1];return false;
+		}
+	});
+	if(!iurl){fn(1)}
+	$.ajax({
+		url:iurl,
+		timeout:3000,
+		success:function(res){
+			if(!res['code']){fn(0);return}
+			fn(0)
+		},
+		error:function(){fn(1)}
+	});
+}
+function publish_content(f){
+	var iptfile=document.getElementById('upfile');
+	var flen=iptfile.files.length;
+	var formdata=new FormData(document.getElementById('publish_form'));
+	if(flen<1){
+		formdata.delete('uploads');
+	}
+	var to0=formdata.get('to0');
+	if(to0=='@all'){
+		formdata.delete('to');
+	}else if(to0=='@me'){
+		formdata.set('to','')
+	}
+	formdata.delete('to0');
+	loading();
+	chk_ipns_init(formdata.get('nsname'),function(need_init){
+		if(need_init){
+			formdata.append('init','true');
+		}
+		$.ajax({
+			url:'/publish',
+			type:"POST",
+			data:formdata,
+			dataType:'json',
+			processData:false,
+			contentType:false,
+			error:function(){hideload();alerterr('发布失败');},
+			success:function(res){
+				hideload()
+				if(res.code=='1'){
+					alertok('发布成功!');
+					iv.data.listipnskey();
+					f.reset()
+				}else{
+					alerterr(res.data)
+				}
+			}
+		})
+	})
+	
+}
+function init(){
+	iv.data.getrecipient();
+}
+
 $(function(){
-	init_getkey();
+	init();
 })
 
 
