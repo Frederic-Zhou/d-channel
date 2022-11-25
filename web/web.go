@@ -627,14 +627,12 @@ func sendP2PHandler(c *gin.Context) {
 
 **/
 
-var onceSetStream sync.Once
-
 func setStreamHandler(c *gin.Context) {
 
 	var readchan = make(chan string, 10)
 
 	//设置只做一次
-	onceSetStream.Do(func() { ipfsnode.SetStreamHandler(readchan) })
+	ipfsnode.SetStreamHandler(readchan)
 
 	readchan <- "started"
 	defer close(readchan)

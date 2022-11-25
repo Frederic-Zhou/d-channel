@@ -268,7 +268,6 @@ func SetStreamHandler(readchan chan string) {
 				s.Close()
 			}
 		})
-
 	}
 
 	// return *host.InfoFromHost(lanHost), *host.InfoFromHost(wanHost)
