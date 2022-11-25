@@ -69,7 +69,7 @@ func Start(addr string) error {
 	router.POST("/listenp2p", listenP2PHandler) //（优先使用 setstream）开启监听p2p，返回stream message
 	router.POST("/sendp2p", sendP2PHandler)     //（优先使用 newstream）发送p2p消息
 
-	router.POST("/setstream", setStreamHandler) //开启监听p2p，返回stream message
+	router.GET("/setstream", setStreamHandler)  //开启监听p2p，返回stream message
 	router.POST("/newstream", newStreamHandler) //发送p2p消息
 
 	router.POST("/pubtopic", pubTopicHandler) //pubsub 发布topic
@@ -195,13 +195,16 @@ func publishHandler(c *gin.Context) {
 	tos := []age.Recipient{}
 	if len(postparams.To) > 0 {
 		postparams.To = append(postparams.To, secret.Get().Recipient.(*age.X25519Recipient).String())
+		formatedTo := []string{}
 		for _, to := range postparams.To {
 			t, err := age.ParseX25519Recipient(to)
 			if err != nil {
 				continue
 			}
 			tos = append(tos, t)
+			formatedTo = append(formatedTo, to)
 		}
+		postparams.To = formatedTo // 重新赋值整理后的to列表，前面的循环去掉了age.ParseX25519Recipient失败的键
 	}
 
 	/// --- 4. 从请求内容中，提取出需要上传的文件，并写入到 postMap, 修改post中附件文件路径为文件名
@@ -596,8 +599,6 @@ func listenP2PHandler(c *gin.Context) {
 		return false
 	})
 
-	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
-
 }
 
 // 发送p2p数据处理
@@ -623,6 +624,8 @@ func setStreamHandler(c *gin.Context) {
 
 	ipfsnode.SetStreamHandler(readchan)
 
+	readchan <- "started"
+
 	var err error
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-readchan; ok {
@@ -639,8 +642,6 @@ func setStreamHandler(c *gin.Context) {
 		}
 		return false
 	})
-
-	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 
 }
 
@@ -701,8 +702,6 @@ func subTopicHandler(c *gin.Context) {
 		}
 		return false
 	})
-
-	c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 
 }
 
