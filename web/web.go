@@ -633,9 +633,11 @@ func setStreamHandler(c *gin.Context) {
 
 	//设置只做一次
 	ipfsnode.SetStreamHandler(readchan)
-
 	readchan <- "started"
-	defer close(readchan)
+	defer func() {
+		ipfsnode.RemoveStreamHandler()
+		close(readchan)
+	}()
 
 	var err error
 	c.Stream(func(w io.Writer) bool {

@@ -344,3 +344,17 @@ func NewStream(ctx context.Context, peeridstr string, message string) (err error
 	}
 	return
 }
+
+func RemoveStreamHandler() {
+	hosts := []host.Host{
+		IpfsNode.DHT.LAN.Host(),
+		IpfsNode.DHT.WAN.Host(),
+	}
+
+	for _, host := range hosts {
+		host.RemoveStreamHandler(StreamMessageProto)
+	}
+
+	// return *host.InfoFromHost(lanHost), *host.InfoFromHost(wanHost)
+
+}
