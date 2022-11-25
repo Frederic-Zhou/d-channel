@@ -42,7 +42,22 @@
 			</ul>
 			<div class="w3-blue p5 mt10">peers</div>
 			<ul class="w3-ul w3-border bk">
+				<li><a href="javascript:;" class="w3-btn w3-red" i-onclick="{%add_peers()%}">新增peers</a></li>
 				<li i-for="peerslist">{%item.name%}</li>
+			</ul>
+			<div class="w3-blue p5 mt10">stream</div>
+			<ul class="w3-ul w3-border bk" style="max-height:200px;overflow-y:scroll;overflow-y:auto;">
+				<li>
+					<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">set stream</label>
+				</li>
+				<li i-for="streamlist">{%item%}</li>
+				<li>
+					<form class="" onsubmit="return false;" i-onsubmit="newstream">
+						<input class="w3-input w3-border" name="peerid" type="text" placeholder="peerid" required />
+						<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
+						<button type="submit" class="w3-btn w3-tiny w3-blue">发送</button>
+					</form>
+				</li>
 			</ul>
 		</div>
 		<div class="w8">
@@ -118,6 +133,7 @@
 </div>
 
 
+<div style="height:50px">&nbsp;</div>
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
 <script type="text/javascript" src="/asset/js/iceView.js"></script>
 <script type="text/javascript" src="/asset/js/fn.js"></script>
@@ -162,7 +178,7 @@ function set_local_pwd(f){
 		if(res.code=='1'){
 			sessionStorage.setItem('secretkey',res.data);
 			$('#pwd_dialog').hide();
-			init_info();
+			init();
 		}else{
 			alerterr(res.data)
 		}
@@ -172,11 +188,31 @@ function set_local_pwd(f){
 
 
 
+var evtSc = null;
+function open_stream(fn){
+	if(evtSc) evtSc.close();
+	evtSc = new EventSource('/setstream');
+	evtSc.onmessage=function(e){
+		fn(e.data)
+		console.log(e)
+	}
+	evtSc.onerror=function(e){
+		console.log(e)
+	}
+}
+function close_stream(){
+	if(evtSc){
+		evtSc.close()
+	}
+	evtSc = null;
+}
+
 
 var iv=ice.view('#app',{
 	followed_ns:[],
 	postlist:[],
 	error_ipns_list:[],
+	p2p_on:[],
 	getrecipient:function(){
 		var zs=this;
 		$.get('/getrecipient',null,null,'json').then(function(res){
@@ -252,6 +288,9 @@ var iv=ice.view('#app',{
 			if(!res['code']){alerterr(res['data']);return}
 		},'json')
 	},
+	add_peers:function(){
+		
+	},
 	load_all:function(){
 		this.listipnskey();
 		this.getfollows();
@@ -297,6 +336,29 @@ var iv=ice.view('#app',{
 				}
 			},'json')
 		});
+	},
+
+	streamlist:[],
+	stream_on:false,
+	switch_stream:function(el){
+		var zs=this;
+		if(el.checked){
+			zs.stream_on=true;
+			open_stream(function(dt){
+				zs.streamlist.push(dt)
+			});
+		}else{
+			zs.stream_on=false;
+			close_stream()
+		}
+	},
+	newstream:function(el){
+		if(!this.stream_on) return;
+		var zs=this;
+		var dt={'peerid':el.peerid.value,'body':el.body.value};
+		$.post('/newstream',dt,function(res){
+			
+		})
 	}
 });
 function dlg_new_ipnskey(){
