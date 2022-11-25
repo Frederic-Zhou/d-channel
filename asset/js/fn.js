@@ -52,11 +52,12 @@ function layconfirm(str,fn1,fn2){
 		if(typeof(fn2)=='function'){fn2();}
 	});
 }
-function layinput(title,val,fn){
+function layinput(title,val,fn,fn_succ){
 	return layer.prompt({
 		'formType':0,
 		value:val,
 		title:title,
+		success:function(idx){if(typeof(fn_succ)=='function') fn_succ(idx);}
 	},function(value,idx){
 		if(typeof(fn)=='function') fn(value);
 		layer.close(idx)

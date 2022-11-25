@@ -36,6 +36,7 @@
 			
 			<div class="w3-blue p5 mt10">follows</div>
 			<ul class="w3-ul w3-border bk">
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增follow</a></li>
 				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" class="clink">{%item.ns%}</a>
 				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
 				</li>
@@ -46,16 +47,18 @@
 				<li i-for="peerslist">{%item.name%}</li>
 			</ul>
 			<div class="w3-blue p5 mt10">stream</div>
-			<ul class="w3-ul w3-border bk" style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
+			<ul class="w3-ul w3-border bk" >
 				<li>
 					<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">set stream</label>
 				</li>
-				<li i-for="streamlist">{%item%}</li>
+				<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
+				<li i-for="streamlist"><b>{%item.from%}:</b>{%item.message%}</li>
+				</div>
 				<li>
 					<form class="" onsubmit="return false;" i-onsubmit="newstream">
 						<input class="w3-input w3-border" name="peerid" type="text" placeholder="peerid" required />
 						<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
-						<button type="submit" class="w3-btn w3-tiny w3-blue">发送</button>
+						<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
 					</form>
 				</li>
 			</ul>
@@ -92,7 +95,7 @@
 						<!--<input type="hidden" name="init" value="true" />-->
 					</div>
 					<div class="w3-section">
-						<button type="submit" class="w3-btn w3-blue">发表内容</button>
+						<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容</button>
 					</div>
 				</form>
 			</div>
@@ -139,6 +142,10 @@
 <script type="text/javascript" src="/asset/js/iceView.js"></script>
 <script type="text/javascript" src="/asset/js/fn.js"></script>
 <script type="text/javascript">
+
+
+function btn_ok(btn,txt){$(btn).removeAttr('disabled').removeAttr('style').html(txt);}
+function btn_load(btn,txt){$(btn).attr('disabled','disabled').attr('style','background-color:#616161 !important').html(txt);}
 
 
 var evtSource=null;
@@ -341,12 +348,15 @@ var iv=ice.view('#app',{
 
 	streamlist:[],
 	stream_on:false,
+	stream_users:[],
 	switch_stream:function(el){
 		var zs=this;
 		if(el.checked){
 			zs.stream_on=true;
 			open_stream(function(dt){
-				zs.streamlist.push(dt)
+				if(dt=='started') return;
+				var v=JSON.parse(dt);
+				zs.streamlist.push(v)
 			});
 		}else{
 			zs.stream_on=false;
@@ -354,14 +364,31 @@ var iv=ice.view('#app',{
 		}
 	},
 	newstream:function(el){
-		if(!this.stream_on) return;
+		if(!this.stream_on){msgerr('stream 未开启');return;}
 		var zs=this;
+		btn_load('#btn_stream','发送中');
 		var dt={'peerid':el.peerid.value,'body':el.body.value};
 		$.post('/newstream',dt,function(res){
+			btn_ok('#btn_stream','发送');
 			if(!res['code']){alerterr(res['data']);return}
 		})
 	}
 });
+
+function dlg_new_follow(){
+	layinput('请输入follow的name和ns','',function(v){
+		v=$.trim(v);
+		if(!v){msgerr('未输入name');return;}
+		var ns=$.trim($('#follow_ns').val());
+		if(!ns){msgerr('未输入ns');return;}
+		iv.data.follow(v,ns);
+	},function(){
+		$(".layui-layer-content").append(`<br/><input type="text" id="follow_ns" class="layui-layer-input" placeholder="输入ns"/>`);
+		setTimeout(function(){
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','请输入name');
+		},100);
+	})
+}
 function dlg_new_ipnskey(){
 	layinput('请输入ipnskey的nsname','',function(v){
 		v=$.trim(v);
@@ -390,6 +417,7 @@ function chk_ipns_init(nm,fn){
 		error:function(){fn(1)}
 	});
 }
+
 function publish_content(f){
 	var iptfile=document.getElementById('upfile');
 	var flen=iptfile.files.length;
@@ -404,7 +432,9 @@ function publish_content(f){
 		formdata.set('to','')
 	}
 	formdata.delete('to0');
-	loading();
+	//loading();
+
+	btn_load('#btn_publish','提交中..')
 	chk_ipns_init(formdata.get('nsname'),function(need_init){
 		if(need_init){
 			formdata.append('init','true');
@@ -418,7 +448,8 @@ function publish_content(f){
 			contentType:false,
 			error:function(){hideload();alerterr('发布失败');},
 			success:function(res){
-				hideload()
+				//hideload()
+				btn_ok('#btn_publish','发表内容')
 				if(res.code=='1'){
 					alertok('发布成功!');
 					iv.data.listipnskey();
