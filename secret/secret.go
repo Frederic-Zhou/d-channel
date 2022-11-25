@@ -56,7 +56,7 @@ func GenSecretKey(password string) (*SecretKeys, error) {
 			return nil, fmt.Errorf("failed to password encrypt %s", err.Error())
 		}
 
-		err = os.WriteFile(keysFile, out.Bytes(), 0644)
+		err = os.WriteFile(filepath.Join(RootPath, keysFile), out.Bytes(), 0644)
 		if err != nil {
 			return nil, fmt.Errorf("failed to write key store %s", err.Error())
 		}
@@ -203,7 +203,7 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 		return nil, fmt.Errorf("failed to password encrypt %s", err.Error())
 	}
 
-	err = os.WriteFile(keysFile, out.Bytes(), 0644)
+	err = os.WriteFile(filepath.Join(RootPath, keysFile), out.Bytes(), 0644)
 	if err != nil {
 		return nil, err
 	}
