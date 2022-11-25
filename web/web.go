@@ -66,8 +66,10 @@ func Start(addr string) error {
 	router.POST("/unfollow", unFollowHandler)           // 删除关注
 	router.POST("/removepeer", removePeertHandler)      // 删除好友
 
-	router.POST("/listenp2p", listenP2PHandler) //（优先使用 setstream）开启监听p2p，返回stream message
-	router.POST("/sendp2p", sendP2PHandler)     //（优先使用 newstream）发送p2p消息
+	/** 去掉P2P监听模式的点对点消息，用stream代替。保留代码
+		router.POST("/listenp2p", listenP2PHandler) //（优先使用 setstream）开启监听p2p，返回stream message
+		router.POST("/sendp2p", sendP2PHandler)     //（优先使用 newstream）发送p2p消息
+	**/
 
 	router.GET("/setstream", setStreamHandler)  //开启监听p2p，返回stream message
 	router.POST("/newstream", newStreamHandler) //发送p2p消息
@@ -565,6 +567,7 @@ func listenFollowedsHandler(c *gin.Context) {
 
 }
 
+/** 去掉P2P监听模式的点对点消息，用stream代替。保留代码
 // 监听p2p消息处理
 func listenP2PHandler(c *gin.Context) {
 
@@ -622,13 +625,19 @@ func sendP2PHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, "ok"))
 }
 
+**/
+
+var onceSetStream sync.Once
+
 func setStreamHandler(c *gin.Context) {
 
 	var readchan = make(chan string, 10)
 
-	ipfsnode.SetStreamHandler(readchan)
+	//设置只做一次
+	onceSetStream.Do(func() { ipfsnode.SetStreamHandler(readchan) })
 
 	readchan <- "started"
+	defer close(readchan)
 
 	var err error
 	c.Stream(func(w io.Writer) bool {
