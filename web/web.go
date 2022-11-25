@@ -640,15 +640,13 @@ func setStreamHandler(c *gin.Context) {
 	var err error
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-readchan; ok {
-			log.Println("read from chan", msg)
-			err = localstore.WriteMessage(msg)
-			log.Println("write to localstore", msg, err)
-			if err != nil {
+
+			if err = localstore.WriteMessage(msg); err != nil {
 				c.SSEvent("message", err.Error())
 				return false
 			}
 			c.SSEvent("message", msg)
-			log.Println("send to SSEvent", msg)
+
 			return true
 		}
 		return false
