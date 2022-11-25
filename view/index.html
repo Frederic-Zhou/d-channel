@@ -74,7 +74,8 @@
 						<label>发送目标：</label>
 						<label><input type="radio" class="w3-radio" name="to0" value="@all" checked>所有人</label>
 						<label><input type="radio" class="w3-radio" name="to0" value="@me" >仅自己可见</label>
-						<input class="w3-input" name="to" type="text" placeholder="其它发送目标" />
+						<label><input type="radio" class="w3-radio" name="to0" value="@other" onclick="$('#to_ipt').focus()">其它发送目标</label>
+						<input class="w3-input" id="to_ipt" name="to" type="text" placeholder="其它发送目标" />
 					</div>
 					<div class="w3-section">
 						<label>内容类型：</label>
