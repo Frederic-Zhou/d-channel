@@ -526,7 +526,7 @@ func listenFollowedsHandler(c *gin.Context) {
 	chanStream := make(chan string, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go func(ctx context.Context) {
+	go func(ctx context.Context, chanStream chan string) {
 		defer close(chanStream)
 		for {
 			select {
@@ -551,7 +551,9 @@ func listenFollowedsHandler(c *gin.Context) {
 			}
 
 		}
-	}(ctx)
+	}(ctx, chanStream)
+
+	chanStream <- "started"
 
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-chanStream; ok {
@@ -570,7 +572,7 @@ func listenP2PHandler(c *gin.Context) {
 	defer cancel()
 	var readchan = make(chan []byte, 10)
 
-	go func(readchan chan []byte) {
+	go func(ctx context.Context, readchan chan []byte) {
 		defer close(readchan)
 		if err := ipfsnode.ListenLocal(
 			ctx,
@@ -580,7 +582,9 @@ func listenP2PHandler(c *gin.Context) {
 			log.Println(err.Error())
 		}
 
-	}(readchan)
+	}(ctx, readchan)
+
+	readchan <- []byte("started")
 
 	var err error
 	c.Stream(func(w io.Writer) bool {
