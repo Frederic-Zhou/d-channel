@@ -42,3 +42,7 @@ reicipent用于发布和p2p加密
 开启本地p2p监听，默认 proto /x/message
 
 发送消息到指定peerid
+
+
+## todo
+1. ipfs访问默认pin，除非传递 ?pin=no
