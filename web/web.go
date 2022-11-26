@@ -115,7 +115,9 @@ func ipfsHandler(c *gin.Context) {
 	}
 	defer func() {
 		nd.Close()
-		_ = IpfsAPI.Pin().Add(ctx, path.New(cid+fpath))
+		if c.DefaultQuery("pin", "yes") == "yes" {
+			_ = IpfsAPI.Pin().Add(ctx, path.New(cid+fpath))
+		}
 	}()
 
 	fs := []string{}
