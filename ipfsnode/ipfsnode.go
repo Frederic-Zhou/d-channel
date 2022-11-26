@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"sync"
 
 	icore "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 
 	// peer "github.com/libp2p/go-libp2p-peer"
 
@@ -77,8 +79,22 @@ func setupPlugins(externalPluginsPath string) error {
 
 func createRepo(repo string) (string, error) {
 
+	var cfg *config.Config
+	var err error
+
 	// Create a config with default options and a 2048 bit key
-	cfg, err := config.Init(io.Discard, 2048)
+	// cfg, err = config.Init(io.Discard, 2048)
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	identity, err := config.CreateIdentity(os.Stdout, []options.KeyGenerateOption{
+		options.Key.Type("ed25519"),
+	})
+	if err != nil {
+		return "", err
+	}
+	cfg, err = config.InitWithIdentity(identity)
 	if err != nil {
 		return "", err
 	}
