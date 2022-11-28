@@ -19,6 +19,7 @@
 	<p class="m0">peerid：{%peerid%}</p>
 	<p class="el m0">pubkey：{%pubkey%}</p>
 	<p class="m0">Recipient：{%recipient%}</p>
+	<p class="m0"><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">修改密码</a></p>
 </div>
 
 <div class="wrap mt20">
@@ -43,7 +44,7 @@
 			</ul>
 			<div class="w3-blue p5 mt10">peers</div>
 			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" i-onclick="{%add_peers()%}">新增peers</a></li>
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增peers</a></li>
 				<li i-for="peerslist">{%item.name%}</li>
 			</ul>
 			<div class="w3-blue p5 mt10">stream</div>
@@ -148,32 +149,6 @@ function btn_ok(btn,txt){$(btn).removeAttr('disabled').removeAttr('style').html(
 function btn_load(btn,txt){$(btn).attr('disabled','disabled').attr('style','background-color:#616161 !important').html(txt);}
 
 
-var evtSource=null;
-function list_follows(){
-	evtSource = new EventSource('/listenfolloweds');
-	/*evtSource.onmessage=function(event){
-		console.log(event);
-	}*/
-	evtSource.addEventListener('message',function(e){
-		console.log(e);
-	});
-	evtSource.onerror=function(error){
-		console.log('错误msg',error);
-		try{
-			evtSource.close();
-		}catch(e){
-			evtSource=null;
-		}
-	}
-	/*$.get('/listenfolloweds',function(res){
-		if(res.code!='1'){return;}
-		var htm=''
-		$.each(res.data,function(k,v){
-			htm+='<li>'+v[0]+': '+v[1]+'</li>'
-		});
-		$('#listenfolloweds').html(htm);
-	},'json')*/
-}
 
 function set_local_pwd(f){
 	var pwd=$.trim(f.password.value);
@@ -256,7 +231,7 @@ var iv=ice.view('#app',{
 	rm_ipnskey:function(nsname){
 		var zs=this;
 		layconfirm('是否要删除【'+nsname+'】？',function(){
-			$.post('/reomveipnskey',{'nsname':nsname},function(res){
+			$.post('/removeipnskey',{'nsname':nsname},function(res){
 				if(!res['code']){alerterr(res['data']);return}
 				zs.listipnskey();
 			},'json');
@@ -290,14 +265,37 @@ var iv=ice.view('#app',{
 			},'json');
 		})
 	},
+	newsecret:function(oldpwd,newpwd){
+		var zs=this;
+		$.post('/newsecretkey',{'oldpassword':oldpwd,'password':newpwd},function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			alertok('密码修改成功!',function(){
+				zs.getrecipient();
+			})
+		},'json');
+	},
 	getpeers:function(){
 		var zs=this;
 		$.get('/getpeers',function(res){
 			if(!res['code']){alerterr(res['data']);return}
+			zs.peerslist=res['data']
 		},'json')
 	},
-	add_peers:function(){
-		
+	add_peer:function(name,recipient,peerid,peerpubkey){
+		var zs=this;
+		$.post('/addpeer',{'name':name,'recipient':recipient,'peerid':peerid,'peerpubkey':peerpubkey},function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			alertok('节点添加成功!',function(){
+				zs.getpeers();
+			})
+		},'json');
+	},
+	getmessages:function(){
+		var zs=this;
+		$.get('/getpeers',function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			zs.streamlist=res['data']
+		},'json')
 	},
 	load_all:function(){
 		this.listipnskey();
@@ -375,6 +373,43 @@ var iv=ice.view('#app',{
 	}
 });
 
+function dlg_new_peer(){
+	layinput('添加新节点','',function(v){
+		v=$.trim(v);
+		if(!v){msgerr('输入节点名称');return;}
+		var new_recipient=$.trim($('#new_recipient').val());
+		if(!new_recipient){msgerr('请输入recipient');return;}
+		var new_peerid=$.trim($('#new_peerid').val());
+		if(!new_peerid){msgerr('请输入peerid');return;}
+		var new_peerpubkey=$.trim($('#new_peerpubkey').val());
+		if(!new_peerpubkey){msgerr('请输入peerpubkey');return;}
+		iv.data.add_peer(v,new_recipient,new_peerid,new_peerpubkey);
+	},function(){
+		var html=`
+			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="recipient"/>
+			<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="peerid"/>
+			<br/><textarea id="new_peerpubkey" class="layui-layer-input" placeholder="peerpubkey" style="width:260px"></textarea>
+		`;
+		$(".layui-layer-content").append(html);
+		setTimeout(function(){
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','节点名称');
+		},100);
+	})
+}
+function dlg_new_secret(){
+	layinput('设置新密码','',function(v){
+		v=$.trim(v);
+		if(!v){msgerr('输入当前密码');return;}
+		var ns=$.trim($('#new_pwd').val());
+		if(!ns){msgerr('未输入新密码');return;}
+		iv.data.newsecret(v,ns);
+	},function(){
+		$(".layui-layer-content").append(`<br/><input type="text" id="new_pwd" class="layui-layer-input" placeholder="新密码"/>`);
+		setTimeout(function(){
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','当前密码');
+		},100);
+	})
+}
 function dlg_new_follow(){
 	layinput('请输入follow的name和ns','',function(v){
 		v=$.trim(v);
