@@ -160,7 +160,7 @@ func NewSecretKey(oldpassword, passwordtoEncrypt string) (*SecretKeys, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to NewScryptIdentity %s", err.Error())
 	}
-	keysfile, err := os.ReadFile(keysFile)
+	keysfile, err := os.ReadFile(filepath.Join(RootPath, keysFile))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file %s", err.Error())
 	}
