@@ -683,7 +683,7 @@ func subTopicHandler(c *gin.Context) {
 	defer cancel()
 	topic := c.DefaultPostForm("topic", "")
 	if topic == "" {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "nedd topic"))
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "need topic"))
 		return
 	}
 

@@ -61,9 +61,7 @@ func GenSecretKey(password string) (*SecretKeys, error) {
 			return nil, fmt.Errorf("failed to write key store %s", err.Error())
 		}
 
-	} else if err != nil { //如果是非不存在的其他错误
-		return nil, fmt.Errorf("failed to read %s", err.Error())
-	} else { //存在，并且没有错误，用文件转换为keyJson
+	} else if err == nil { //存在，并且没有错误，用文件转换为keyJson
 		scryptIdentity, err := age.NewScryptIdentity(password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to NewScryptIdentity %s", err.Error())
@@ -79,6 +77,8 @@ func GenSecretKey(password string) (*SecretKeys, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to Unmarshal %s", err.Error())
 		}
+	} else { //如果是非不存在的其他错误
+		return nil, fmt.Errorf("failed to read %s", err.Error())
 	}
 
 	secretKeys = &SecretKeys{}
