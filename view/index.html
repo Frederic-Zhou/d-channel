@@ -29,7 +29,7 @@
 			<ul class="w3-ul w3-border bk">
 				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
 				<li i-for="ipnskeyslist">
-					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" title="{%item[1]%}" class="clink">{%ecstr(item[1],14,6)%}</a>
+					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" title="{%item[1]%}" class="clink">{%ecstr(item[1],8,6)%}</a>
 					&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink">复制</a>
 					&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
 					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
@@ -39,7 +39,7 @@
 			<div class="w3-blue p5 mt10">关注的频道</div>
 			<ul class="w3-ul w3-border bk">
 				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
-				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,14,6)%}</a>
+				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,6)%}</a>
 				&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink">复制</a>
 				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
 				</li>
@@ -218,7 +218,7 @@ var iv=ice.view('#app',{
 	p2p_on:[],
 	pubkey:'',peerid:'',recipient:'',
 	ecstr:function(v,l1,l2){
-		return left(v,l1)+'......'+right(v,l2);
+		return left(v,l1)+'...'+right(v,l2);
 	},
 	copy:function(str){
 		el_copy.value=str;

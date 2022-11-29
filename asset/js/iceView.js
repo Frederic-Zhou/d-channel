@@ -1,22 +1,167 @@
 'use strict';
 /**
- * iceView v1.0.3
- * MIT License By iceui.cn
- * 作者：ICE
- * ＱＱ：308018629
- * 官网：iceui.cn
- * 说明：版权完全归iceui所有，转载和使用请注明版权
- * -------------------------------------------------------------
- * 模板引擎
+ ************************************************************************
+ * ice.view(模板引擎)
+ * 作者：闫立峰
+ * 官网：https://iceui.cn
  * 创建：2020-06-28
- * 更新：2021-11-10
+ * 更新：2022-06-08
+ * MIT License By iceui.cn
+ ************************************************************************
+ * 版权声明：该版权完全归ICEUI官方所有，可转载使用和学习，但请务必保留版权信息
+ ************************************************************************
  */
-
 var ice = ice || {};
 ice.view = function(config, options, msgList) {
 	var regs = /\{%([\w\W]*?)%\}/g;
 	var reg = /\{%([\w\W]*?)%\}/;
 	var _this;
+	/**
+	 * ajax请求
+	 * @param json：如果为string字符串时，则为url，如果为json对象时，参数说明如下：
+	 * 	url：      请求地址
+	 * 	type：     请求类型，默认为post，可选值：post，get
+	 * 	timeout：  网络超时，默认为15000毫秒
+	 * 	async：    异步，默认为true
+	 * 	data：     要求为Object或String类型的参数，发送到服务器的数据
+	 * 	json：     是否将请求过来的数据自动转为json对象，默认为true
+	 * 	success：  请求成功之后的回调函数
+	 * 	error：    请求失败之后的回调函数
+	 * 	complete： 不管请求成功还是失败，都会调用
+	 * @param data：json传参为string字符串时此参数有效，等同于json.data
+	 * @return {object}
+	*/
+	function ajax(json,data) {
+		if (typeof json == 'string') {
+			json = { url: json };
+			if (data) {
+				json.data = data;
+			}
+		}
+		if (!json || !json.url) return;
+		json.type = json.type || 'post';
+		json.timeout = json.timeout || 15000;
+		json.async = json.async != undefined ? json.async : true;
+		json.json = json.json != undefined ? json.json : true;
+		return new Promise((resolve,reject)=>{
+			var json2url = function(json) {
+				var arr = [];
+				for (var name in json) {
+					if(Array.isArray(json[name])){
+						if (typeof json[name][0] == 'object'){
+							arr.push(name + '=' + encodeURIComponent(obj2str(json[name])));
+						}else{
+							for (var k in json[name]) {
+								arr.push(name + '=' + encodeURIComponent(json[name][k]));
+							}
+						}
+					}else{
+						arr.push(name + '=' + encodeURIComponent(json[name]));
+					}
+				}
+				return arr.join('&');
+			}
+			//创建
+			var xhr = new XMLHttpRequest();
+			//连接 和 发送 - 第二步
+			switch (json.type.toLowerCase()) {
+				case 'post':
+					xhr.open('POST', json.url, json.async);
+					//设置表单提交时的内容类型
+					xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
+					if(json.data instanceof FormData == false){
+						xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+					}
+					if(json.header){
+						for(var k in json.header){
+							xhr.setRequestHeader(k, json.header[k]);
+						}
+					}
+					xhr.send(json.data instanceof FormData?json.data:json2url(json.data));
+					break;
+				default:
+					xhr.open('GET', json.url + '?' + json2url(json.data), json.async);
+					xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
+					xhr.send();
+					break;
+			}
+			//接收 - 第三步
+			json.loading && json.loading();
+			json.timer = setTimeout(function() {
+				xhr.onreadystatechange = null;
+				json.error && json.error('网络超时');
+				json.complete && json.complete(408);
+			}, json.timeout);
+			xhr.onreadystatechange = function() {
+				if (xhr.readyState == 4) {
+					clearTimeout(json.timer);
+					if (xhr.status >= 200 && xhr.status < 300 || xhr.status == 304) {
+						if(xhr.responseText.length>0){
+							if(isJson(xhr.responseText)){
+								var res = json.json ? JSON.parse(xhr.responseText) : xhr.responseText;
+							}else{
+								var res = json.json ? {code:200,data:xhr.responseText} : xhr.responseText;
+							}
+						}else{
+							var res = '';
+						}
+						resolve && resolve(res);
+						json.success && json.success(res);
+						json.complete && json.complete(res);
+					} else {
+						reject && reject(xhr.status, xhr.responseText);
+						json.error && json.error(xhr.status, xhr.responseText);
+						json.complete && json.complete(xhr.status, xhr.responseText);
+					}
+				}
+			}
+		})
+	}
+
+	//是否为json字符串
+	function isJson(str) {
+		if (typeof str == 'string') {
+			try {
+				JSON.parse(str);
+				return true;
+			} catch(e) {
+				return false;
+			}
+		}
+		return false;
+	}
+
+	//对象转为字符串，包括function
+	function obj2str(obj){
+		var a= JSON.stringify(obj, function(key, val) {
+			if (typeof val === 'function') {
+				var str = '`' + val + '`';
+				str = str.split('\n').join('FN\\n').split('\t').join('FN\\t');
+				return str;
+			}
+			return val;
+		});
+		a = a.replace(/("`)|(`")/g,'').replace(/FN\\\\n/g,'\n').replace(/FN\\\\t/g,'\t');
+		return a;
+	}
+
+	//处理中文输入法输入时
+	function inputOn(obj,fn){
+		var doing=false;
+		obj.addEventListener('compositionstart',function(e){
+			doing=true;
+		},false);
+		obj.addEventListener('input',function(e){
+			if(!doing){
+				fn(e);
+			}
+		},false);
+		obj.addEventListener('compositionend',function(e){
+			doing=false;
+			fn(e);
+		},false);
+	}
+
 	//克隆对象
 	function cloneObj(obj){
 	    if (typeof obj !== 'object') return obj;
@@ -108,7 +253,6 @@ ice.view = function(config, options, msgList) {
 		if(!com || !com.length || value === undefined || !(value+'').length) return value;
 		com = com.trim().split(':');
 		value = value.toString();
-		console.log(value);
 		//类型值
 		var val = com[1];
 		if(com[0] !== 'str'){
@@ -125,9 +269,9 @@ ice.view = function(config, options, msgList) {
 				//整数位数-小数位数
 				var [l,r] = val.split('-'),reg;
 				if(r>0){
-					reg = new RegExp('(\\d{1,'+l+'}\\.\\d{0,'+r+'})|(\\d{1,'+l+'})');
+					reg = new RegExp('(-?\\d{1,'+l+'}\\.\\d{0,'+r+'})|(-?\\d{1,'+l+'})');
 				}else{
-					reg = new RegExp('(\\d+\\.\\d{0,'+l+'})|(\\d+$)');
+					reg = new RegExp('(-?\\d+\\.\\d{0,'+l+'})|(-?\\d+$)');
 				}
 				value = value.match(reg);
 				value = value !== null ? value[0] : '';
@@ -193,7 +337,6 @@ ice.view = function(config, options, msgList) {
 		}
 		//整数类型
 		if(com[0] === 'int'){
-			console.log(value)
 			if(val && value.length){
 				value = (Math.floor(value) + '').slice(0, val)
 			}
@@ -245,7 +388,6 @@ ice.view = function(config, options, msgList) {
         this.list = {};
     }
     msg.prototype = {
-
         addList: function (node,keys) {
 			//将变量名称处理成这种
 			//list[0].child
@@ -404,7 +546,7 @@ ice.view = function(config, options, msgList) {
 			}
 			that.kidnap(that.data)
 		}
-
+		this.data.ajax = ajax;
 		this.data.change = this.data.change ? this.data.change : function(){};
         this.data.onload && this.data.onload.bind(this.data)(this.data,this.msg);
         return this;
@@ -624,12 +766,17 @@ ice.view = function(config, options, msgList) {
 					vi = vi !== null ? vi[1] : value;
 
 					var r = vi.indexOf('.') > -1 || vi.indexOf('[') > -1 ? 1 : 0;
-	                if(key == 'i-model') {
-						
+					if(key == 'i-type') {
+						if(node.value !== undefined) {
+							inputOn(node,function(){
+								node.value = typeInit(node['i-type'],node.value);
+							})
+						}
+					}
+	                else if(key == 'i-model') {
 	                	if(node.type == 'number' || node.type == 'text' || node.type == 'password' || node.tagName === 'TEXTAREA'){
 							!function(vi,r){
-								node.addEventListener('input', function (e) {
-									node.value = typeInit(node['i-type'],node.value);
+								inputOn(node,function(){
 									if(r){
 										that.reviseEnvRun(vi+'=$[1]',node.value);
 									}else{
@@ -685,18 +832,6 @@ ice.view = function(config, options, msgList) {
 									}
 								}
 							}
-							// else{
-							// 	//node的值有可能是{{变量}}
-							// 	var vr = !reg.test(node.value);
-							// 	if(vr && child){
-							// 		console.log(child)
-							// 		if(r){
-							// 			that.reviseEnvRun(vi+'=$[1]',getSelectVal(node));
-							// 		}else{
-							// 			eval('that.data.'+vi+'=getSelectVal(node)');
-							// 		}
-							// 	}
-							// }
 
 							!function(vi,r,node){
 								node.addEventListener('change', function () {
@@ -803,16 +938,11 @@ ice.view = function(config, options, msgList) {
 					name.replace(/'[^']+'/g,' ').replace(/"[^"]+"/g,' ') :
 					name.replace(/"[^"]+"/g,' ').replace(/'[^']+'/g,' ');
 				name = name.replace(/_\(L\)_/g,'.').replace(/_\(R\)_/g,'');
-
 				
 				//提取所有的变量
 				function rv(str){
-					var arr = [];
-					str.replace(/((?<!\.)\b[\w\[\]\.]+)/g,function(a,b,c){
-						arr.push(a);
-						return a;
-					})
-					return arr;
+					var arr = str.match(/(?!\.)(\b[\w\[\]\.]+)/g);
+					return arr ? arr : [];
 				}
 				//处理中括号里的变量
 				function rva(a){
@@ -1050,8 +1180,7 @@ ice.view = function(config, options, msgList) {
 					var itemName = itemNode.getAttribute('i-item'), indexName = itemNode.getAttribute('i-index');
 					itemName = itemName && itemName.length > 0 ? itemName : 'item';
 					indexName = indexName && indexName.length > 0 ? indexName : 'index';
-
-					var itemReg = new RegExp('(?<!\\.)\\b'+itemName+'\\b', 'g'), indexReg = new RegExp('(?<!\\.)\\b'+indexName+'(?!\\.)\\b', 'g');
+					var itemReg = new RegExp('(?!\\.)\\b'+itemName+'\\b', 'g'), indexReg = new RegExp('(?!\\.)\\b'+indexName+'(?!\\.)\\b', 'g');
 					// var frag = document.createDocumentFragment();
 
 					//处理所有的attr
@@ -1086,7 +1215,7 @@ ice.view = function(config, options, msgList) {
 						});
 						this.node.itemNode.push(node);
 						// frag.appendChild(node);
-						this.node.hide.parentNode.insertBefore(node,this.node.hide);
+						this.node.hide.parentNode && this.node.hide.parentNode.insertBefore(node,this.node.hide);
 						this.vm.eachNode(node);
 					}
 					//处理select
@@ -1183,7 +1312,8 @@ ice.view = function(config, options, msgList) {
 					return;
 				}
 				else if (this.key == 'i-html') {
-                    this.node.innerHTML = this.text;
+					var value = this.value.match(reg);
+					this.node.innerHTML = value ? this.vm.reviseEnv(value[1]) : value;
                 }
 				
 				var v = this.value;
