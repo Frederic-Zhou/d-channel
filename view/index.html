@@ -19,7 +19,10 @@
 	<p class="m0" title="{%peerid%}" >节点编号：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}" href="javascript:;" class="cfff">复制</a></p>
 	<p class="el m0" title="{%pubkey%}">节点公钥：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}" href="javascript:;" class="cfff">复制</a></p>
 	<p class="m0" title="{%recipient%}">加密公钥：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}" href="javascript:;" class="cfff">复制</a></p>
-	<p class="m0"><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a></p>
+	<p class="m0">
+		<a href="javascript:;" class="w3-btn w3-teal" i-onclick="{%copy_all('节点编号:',peerid,'节点公钥:',pubkey,'加密公钥:',recipient)%}">全部复制</a>
+		<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
+	</p>
 </div>
 
 <div class="wrap mt20">
@@ -59,7 +62,7 @@
 				</div>
 				<li>
 					<form class="" onsubmit="return false;" i-onsubmit="newstream">
-						<input class="w3-input w3-border" name="peerid" type="text" placeholder="peerid" required />
+						<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" required />
 						<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
 						<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
 					</form>
@@ -139,7 +142,7 @@
 	</div>
 </div>
 
-<input type="text" id="copytxt" value="" style="opacity:0;height:1px;" readonly/>
+<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;" readonly/></textarea>
 
 <div style="height:50px">&nbsp;</div>
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
@@ -235,6 +238,13 @@ var iv=ice.view('#app',{
 	},
 	copy:function(str){
 		do_copy(str);
+	},
+	copy_all:function(){
+		var arr=[]
+		for(var i = 0;i<arguments.length;i++){
+			arr.push(arguments[i]);
+		}
+		do_copy(arr.join("\n"));
 	},
 	getrecipient:function(){
 		var zs=this;
@@ -435,7 +445,7 @@ function dlg_new_peer(){
 		iv.data.add_peer(v,new_recipient,new_peerid,new_peerpubkey);
 	},function(){
 		var html=`
-			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="解密公钥recipient"/>
+			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="加密公钥recipient"/>
 			<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="节点编号peerid"/>
 			<br/><textarea id="new_peerpubkey" class="layui-layer-input" placeholder="节点公钥peerpubkey" style="width:260px"></textarea>
 		`;
