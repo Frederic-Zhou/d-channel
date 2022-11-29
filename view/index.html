@@ -410,10 +410,15 @@ var iv=ice.view('#app',{
 	streamlist:[],
 	stream_on:true,
 	stream_users:[],
+	stream_1:true,
 	stream_start:function(){
 		var zs=this;
 		open_stream(function(dt){
-			if(dt=='started') return;
+			if(dt=='started'){
+				stream_1=false;
+				//zs.stream_local();
+				return;
+			}
 			var v=JSON.parse(dt);
 			zs.streamlist.push(v)
 		});
@@ -431,6 +436,12 @@ var iv=ice.view('#app',{
 			zs.stream_on=false;
 			close_stream()
 		}
+	},
+	stream_local:function(){
+		$.get('/getmessages',function(res){
+			if(!res['code']){alerterr(res['data']);return}
+			//zs.streamlist.push({'name':name,'url':url,'dt':res})
+		},'json')
 	},
 	peernames_obj:{},
 	peername:function(pid){
