@@ -119,7 +119,9 @@
 					<li i-for="postlist">
 						<p><b>{%item.name%}: </b>{%item.dt.body%}</p>
 						<p i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</p>
-						<p i-if="{%!!item.dt.attachments)%}" style="color:#996600">附件: {%item.dt.attachments%}</p>
+						<p i-if="{%item.dt.attachments.length%}" style="color:#996600">附件: 
+							<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
+						</p>
 					</li>
 				</ul>
 			</div>
@@ -394,10 +396,10 @@ var iv=ice.view('#app',{
 		});
 		if(exist) return;
 		var zs=this;
-		$.get(url+'/post.json',function(res){
+		$.get(url+'post.json',function(res){
 			zs.postlist.push({'name':name,'url':url,'dt':res})
 		},'json').then(function(){
-			$.get(url+'/meta.json',function(res){
+			$.get(url+'meta.json',function(res){
 				if(res['next']){
 					zs.load_ipfs(res['next'],name);
 				}
