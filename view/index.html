@@ -11,123 +11,153 @@
 	<link rel="stylesheet" href="/asset/css/w3.css" />
 	<link rel="stylesheet" href="/asset/css/css.css" />
 	<link rel="shortcut icon" href="/asset/favicon.ico">
+	<link href="/asset/fontawesome/css/fontawesome.css" rel="stylesheet">
+	<link href="/asset/fontawesome/css/brands.css" rel="stylesheet">
+	<link href="/asset/fontawesome/css/solid.css" rel="stylesheet">
 	<script type="text/javascript" src="/asset/js/jquery1.9.1.min.js"></script>
 
 </head>
 
 <body id="app">
-<div class="w3-panel w3-blue w3-card-4 mt0 p10">
-	<p class="m0" title="{%peerid%}" >节点编号(peerid)：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}" href="javascript:;" class="cfff">复制</a></p>
-	<p class="el m0" title="{%pubkey%}">节点公钥(pubkey)：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}" href="javascript:;" class="cfff">复制</a></p>
-	<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}" href="javascript:;" class="cfff">复制</a></p>
-	<p class="m0">
-		<a href="javascript:;" class="w3-btn w3-teal" i-onclick="{%copy_all('节点编号:',peerid,'节点公钥:',pubkey,'加密公钥:',recipient)%}">全部复制</a>
-		<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
-	</p>
-</div>
+	<div class="w3-panel w3-blue w3-card-4 mt0 p10">
 
-<div class="wrap mt20">
-	<div class="row col-sp12">
-		<div class="w4">
-			<div class="w3-blue p5">频道</div>
-			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
-				<li i-for="ipnskeyslist">
-					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1],item[0])%}" title="{%item[1]%}" class="clink">{%ecstr(item[1],8,6)%}</a>
-					&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink">复制</a>
-					&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
-					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
-				</li>
-			</ul>
-			
-			<div class="w3-blue p5 mt10">关注的频道</div>
-			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
-				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,6)%}</a>
-				&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink">复制</a>
-				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
-				</li>
-			</ul>
-			<div class="w3-blue p5 mt10">节点列表</div>
-			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增节点</a></li>
-				<li i-for="peerslist">
-					{%item.name%}:<a href="javascript:;" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
-					&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink">复制</a>
-				</li>
-			</ul>
-			<div class="w3-blue p5 mt10">点对点</div>
-			<ul class="w3-ul w3-border bk" >
-				<li>
-					<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">开启点对点</label>
-				</li>
-				<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
-				<li i-for="streamlist">
-					<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink">复制</a>
-					{%item.message%}
-				</li>
-				</div>
-				<li>
-					<form class="" onsubmit="return false;" i-onsubmit="newstream">
-						<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" required />
-						<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
-						<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
-					</form>
-				</li>
-			</ul>
-		</div>
-		<div class="w8">
-			<div class="w3-border">
-				<div class="w3-container w3-blue"><h3>发表内容</h3></div>
-				<form class="w3-container" id="publish_form" onsubmit="publish_content(this);return false;">
-					<div class="w3-section">
-						<label>频道：</label>
-						<select name="nsname" class="w3-select">
-							<option i-for="ipnskeyslist" value="{%item[0]%}">{%item[0]%}</option>
-						</select>
-					</div>
-					<div class="w3-section">
-						<label>发送目标：</label>
-						<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_ipt').hide()" />所有人</label>
-						<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_ipt').hide()" />仅自己可见</label>
-						<label><input type="radio" class="w3-radio" name="to0" value="@other" onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
-						<input class="w3-input" id="to_ipt" name="to" type="text" placeholder="发送目标" />
-					</div>
-					<div class="w3-section">
-						<label>内容类型：</label>
-						<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
-						<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
-					</div>
-					<div class="w3-section">
-						<label>内容：</label>
-						<textarea class="w3-input" name="body"></textarea>
-					</div>
-					<div class="w3-section">
-						<label>附件上传：</label>
-						<input type="file" name="uploads" id="upfile" />
-						<!--<input type="hidden" name="init" value="true" />-->
-					</div>
-					<div class="w3-section">
-						<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容</button>
-					</div>
-				</form>
-			</div>
+		<p class="m0" title="{%peerid%}">节点编号(peerid)：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}"
+				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+		<p class="el m0" title="{%pubkey%}">节点公钥(pubkey)：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}"
+				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+		<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}"
+				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+		<p class="m0">
+			<a href="javascript:;" class="w3-btn w3-teal"
+				i-onclick="{%copy_all('节点编号:',peerid,'节点公钥:',pubkey,'加密公钥:',recipient)%}"><i title="copy all"
+					class="fa-solid fa-copy"></i></a>
+			<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
+		</p>
+	</div>
 
-			<div class="w3-border mt10">
-				<div class="w3-container w3-blue"><h3>内容</h3></div>
-				<ul class="w3-ul bk">
-					<li i-for="postlist">
-						<p><b>{%item.name%}: </b>{%item.dt.body%}</p>
-						<p i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</p>
-						<p i-if="{%item.dt.attachments.length%}" style="color:#996600">附件: 
-							<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
-						</p>
+	<div class="wrap mt20">
+		<div class="row col-sp12">
+			<div class="w4">
+				<div class="w3-blue p5">频道</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
+					<li i-for="ipnskeyslist">
+						{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1],item[0])%}"
+							title="{%item[1]%}" class="clink">{%ecstr(item[1],8,6)%}</a>
+						&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink"><i title="copy"
+								class="fa-solid fa-copy"></i></a>
+						&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;"
+							class="clink">删除</a>
+						&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}"
+							i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
+					</li>
+				</ul>
+
+				<div class="w3-blue p5 mt10">关注的频道</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
+					<li i-for="followslist">{%item.name%}:<a href="javascript:;"
+							i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}"
+							class="clink">{%ecstr(item.ns,8,6)%}</a>
+						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy"
+								class="fa-solid fa-copy"></i></a>
+						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i
+								title="unfollow" class="fa-solid fa-bell-slash"></i></a>
+					</li>
+				</ul>
+				<div class="w3-blue p5 mt10">节点列表</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增节点</a></li>
+					<li i-for="peerslist">
+						{%item.name%}:<a href="javascript:;" title="{%item.peerid%}"
+							class="clink">{%ecstr(item.peerid,6,6)%}</a>
+						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy"
+								class="fa-solid fa-copy"></i></a>
+					</li>
+				</ul>
+				<div class="w3-blue p5 mt10">点对点</div>
+				<ul class="w3-ul w3-border bk">
+					<li>
+						<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}"
+								i-onclick="switch_stream">开启点对点</label>
+					</li>
+					<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
+						<li i-for="streamlist">
+							<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}"
+								href="javascript:;" class="clink"><i title="copy" class="fa-solid fa-copy"></i></a>
+							{%item.message%}
+						</li>
+					</div>
+					<li>
+						<form class="" onsubmit="return false;" i-onsubmit="newstream">
+							<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" required />
+							<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
+							<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
+						</form>
 					</li>
 				</ul>
 			</div>
+			<div class="w8">
+				<div class="w3-border">
+					<div class="w3-container w3-blue">
+						<h3>发表内容</h3>
+					</div>
+					<form class="w3-container" id="publish_form" onsubmit="publish_content(this);return false;">
+						<div class="w3-section">
+							<label>频道：</label>
+							<select name="nsname" class="w3-select">
+								<option i-for="ipnskeyslist" value="{%item[0]%}">{%item[0]%}</option>
+							</select>
+						</div>
+						<div class="w3-section">
+							<label>发送目标：</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@all"
+									onclick="$('#to_ipt').hide()" />所有人</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@me"
+									onclick="$('#to_ipt').hide()" />仅自己可见</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@other"
+									onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
+							<input class="w3-input" id="to_ipt" name="to" type="text" placeholder="发送目标" />
+						</div>
+						<div class="w3-section">
+							<label>内容类型：</label>
+							<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
+							<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
+						</div>
+						<div class="w3-section">
+							<label>内容：</label>
+							<textarea class="w3-input" name="body"></textarea>
+						</div>
+						<div class="w3-section">
+							<label>附件上传：</label>
+							<input type="file" name="uploads" id="upfile" />
+							<!--<input type="hidden" name="init" value="true" />-->
+						</div>
+						<div class="w3-section">
+							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i
+									class="fa-solid fa-cloud-arrow-up"></i></button>
+						</div>
+					</form>
+				</div>
+
+				<div class="w3-border mt10">
+					<div class="w3-container w3-blue">
+						<h3>内容</h3>
+					</div>
+					<ul class="w3-ul bk">
+						<li i-for="postlist">
+							<p><b>{%item.name%}: </b>{%item.dt.body%}</p>
+							<p i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</p>
+							<p i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
+								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}"
+									target="_blank">{%att%}</a>
+							</p>
+						</li>
+					</ul>
+				</div>
+			</div>
 		</div>
 	</div>
-</div>
 
 
 
@@ -145,7 +175,8 @@
 			<span onclick="$('id01').hide()" class="w3-button w3-display-topright">&times;</span>
 			<form class="w3-container" onsubmit="set_local_pwd(this);return false;">
 				<p><label>密码验证</label>
-				<input class="w3-input" type="password" name="password" /></p>
+					<input class="w3-input" type="password" name="password" />
+				</p>
 				<button type="submit" class="w3-btn w3-blue">确定</button>
 			</form>
 		</div>
@@ -153,7 +184,7 @@
 </div>
 
 
-<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;" readonly/></textarea>
+<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;" readonly></textarea>
 
 
 <div style="height:50px">&nbsp;</div>
@@ -163,450 +194,452 @@
 <script type="text/javascript">
 
 
-function btn_ok(btn,txt){$(btn).removeAttr('disabled').removeAttr('style').html(txt);}
-function btn_load(btn,txt){$(btn).attr('disabled','disabled').attr('style','background-color:#616161 !important').html(txt);}
+	function btn_ok(btn, txt) { $(btn).removeAttr('disabled').removeAttr('style').html(txt); }
+	function btn_load(btn, txt) { $(btn).attr('disabled', 'disabled').attr('style', 'background-color:#616161 !important').html(txt); }
 
-var el_copy=$('#copytxt').get(0)
-function do_copy(str){
-	el_copy.value=str;
-	//el_copy.setSelectionRange(0,99999);//fix ios
-	//el_copy.select();
-	selectText(el_copy,0,str.length);
-	document.execCommand("Copy");
-	el_copy.blur();
-	layer.msg('已复制',{time:600});
-}
-function selectText(textbox, startIndex, stopIndex) {
-	if(textbox.createTextRange) {//ie
-		var range = textbox.createTextRange();
-		range.collapse(true);
-		range.moveStart('character', startIndex);//起始光标
-		range.moveEnd('character', stopIndex - startIndex);//结束光标
-		range.select();//不兼容苹果
-	} else {//firefox/chrome
-		textbox.setSelectionRange(startIndex, stopIndex);
-		textbox.focus();
+	var el_copy = $('#copytxt').get(0)
+	function do_copy(str) {
+		el_copy.value = str;
+		//el_copy.setSelectionRange(0,99999);//fix ios
+		//el_copy.select();
+		selectText(el_copy, 0, str.length);
+		document.execCommand("Copy");
+		el_copy.blur();
+		layer.msg('已复制', { time: 600 });
 	}
-}
-
-function set_local_pwd(f){
-	var pwd=$.trim(f.password.value);
-	if(!pwd){
-		alerterr('password must not null!');return;
-	}
-	loading()
-	$.post('/getsecretkey',{'password':pwd},function(res){
-		hideload()
-		if(res.code=='1'){
-			sessionStorage.setItem('secretkey',res.data);
-			$('#pwd_dialog').hide();
-			init();
-		}else{
-			alerterr(res.data)
+	function selectText(textbox, startIndex, stopIndex) {
+		if (textbox.createTextRange) {//ie
+			var range = textbox.createTextRange();
+			range.collapse(true);
+			range.moveStart('character', startIndex);//起始光标
+			range.moveEnd('character', stopIndex - startIndex);//结束光标
+			range.select();//不兼容苹果
+		} else {//firefox/chrome
+			textbox.setSelectionRange(startIndex, stopIndex);
+			textbox.focus();
 		}
-	},'json');
-}
-
-
-
-
-var evtSc = null;
-function open_stream(fn){
-	if(evtSc) evtSc.close();
-	evtSc = new EventSource('/setstream');
-	evtSc.onmessage=function(e){
-		fn(e.data)
-		console.log(e)
 	}
-	evtSc.onerror=function(e){
-		console.log(e)
-	}
-}
-function close_stream(){
-	if(evtSc){
-		evtSc.close()
-	}
-	evtSc = null;
-}
-function left(str,len) {
-	if(len>0) {return str.substring(0,len)}
-	else{return ''}
-}
-function right(str,len){
-	if (str.length-len>=0 && str.length>=0 && str.length-len<=str.length) {
-	return str.substring(str.length-len,str.length)}
-	else{return ''}
-}
 
-
-var iv=ice.view('#app',{
-	followed_ns:[],
-	postlist:[],
-	error_ipns_list:[],
-	p2p_on:[],
-	pubkey:'',peerid:'',recipient:'',
-	ecstr:function(v,l1,l2){
-		return left(v,l1)+'...'+right(v,l2);
-	},
-	copy:function(str){
-		do_copy(str);
-	},
-	copy_all:function(){
-		var arr=[]
-		for(var i = 0;i<arguments.length;i++){
-			arr.push(arguments[i]);
+	function set_local_pwd(f) {
+		var pwd = $.trim(f.password.value);
+		if (!pwd) {
+			alerterr('password must not null!'); return;
 		}
-		do_copy(arr.join("\n"));
-	},
-	getrecipient:function(){
-		var zs=this;
-		$.get('/getrecipient',null,null,'json').then(function(res){
-			if(res['code']){
-				zs.recipient=res.data;
-				zs.getpubkey()
-			}else{
-				$('#pwd_dialog').show();
+		loading()
+		$.post('/getsecretkey', { 'password': pwd }, function (res) {
+			hideload()
+			if (res.code == '1') {
+				sessionStorage.setItem('secretkey', res.data);
+				$('#pwd_dialog').hide();
+				init();
+			} else {
+				alerterr(res.data)
 			}
-		});
-	},
-	getpubkey:function(){
-		var zs=this;
-		$.get('/getpubkey',function(res){
-			if(res['code']){
-				zs.peerid=res['data']['peerid'];
-				zs.pubkey=res['data']['pubkey'];
+		}, 'json');
+	}
+
+
+
+
+	var evtSc = null;
+	function open_stream(fn) {
+		if (evtSc) evtSc.close();
+		evtSc = new EventSource('/setstream');
+		evtSc.onmessage = function (e) {
+			fn(e.data)
+			console.log(e)
+		}
+		evtSc.onerror = function (e) {
+			console.log(e)
+		}
+	}
+	function close_stream() {
+		if (evtSc) {
+			evtSc.close()
+		}
+		evtSc = null;
+	}
+	function left(str, len) {
+		if (len > 0) { return str.substring(0, len) }
+		else { return '' }
+	}
+	function right(str, len) {
+		if (str.length - len >= 0 && str.length >= 0 && str.length - len <= str.length) {
+			return str.substring(str.length - len, str.length)
+		}
+		else { return '' }
+	}
+
+
+	var iv = ice.view('#app', {
+		followed_ns: [],
+		postlist: [],
+		error_ipns_list: [],
+		p2p_on: [],
+		pubkey: '', peerid: '', recipient: '',
+		ecstr: function (v, l1, l2) {
+			return left(v, l1) + '...' + right(v, l2);
+		},
+		copy: function (str) {
+			do_copy(str);
+		},
+		copy_all: function () {
+			var arr = []
+			for (var i = 0; i < arguments.length; i++) {
+				arr.push(arguments[i]);
 			}
-			zs.load_all()
-		},'json')
-	},
-	listipnskey:function(){
-		var zs=this;
-		$.ajax({
-			url:'/listipnskey',
-			timeout:3000,
-			success:function(res){
-				if(!res['code']){alerterr(res['data']);return}
-				zs.ipnskeyslist=res['data'];
-			}
-		})
-	},
-	rm_ipnskey:function(nsname){
-		var zs=this;
-		layconfirm('是否要删除【'+nsname+'】？',function(){
-			$.post('/removeipnskey',{'nsname':nsname},function(res){
-				if(!res['code']){alerterr(res['data']);return}
-				zs.listipnskey();
-			},'json');
-		})
-	},
-	getfollows:function(){
-		var zs=this;
-		zs.followed_ns=[];
-		$.get('/getfollows',function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			$.each(res['data'],function(k,v){
-				zs.followed_ns.push(v.ns)
-			})
-			zs.followslist=res['data']
-		},'json')
-	},
-	follow:function(name,ns){
-		var zs=this;
-		$.post('/follow',{'name':name,'ns':ns},function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			zs.getfollows();
-		},'json');
-	},
-	unfollow:function(id){
-		var zs=this;
-		layconfirm('是否要取消关注？',function(){
-			$.post('/unfollow',{'id':id},function(res){
-				if(!res['code']){alerterr(res['data']);return}
-				zs.getfollows();
-				zs.listipnskey();
-			},'json');
-		})
-	},
-	newsecret:function(oldpwd,newpwd){
-		var zs=this;
-		$.post('/newsecretkey',{'oldpassword':oldpwd,'password':newpwd},function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			alertok('密码修改成功!',function(){
-				zs.getrecipient();
-			})
-		},'json');
-	},
-	getpeers:function(){
-		var zs=this;
-		$.get('/getpeers',function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			zs.peerslist=res['data']
-		},'json')
-	},
-	add_peer:function(name,recipient,peerid,peerpubkey){
-		var zs=this;
-		$.post('/addpeer',{'name':name,'recipient':recipient,'peerid':peerid,'peerpubkey':peerpubkey},function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			alertok('节点添加成功!',function(){
-				zs.getpeers();
-			})
-		},'json');
-	},
-	getmessages:function(){
-		var zs=this;
-		$.get('/getpeers',function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			zs.streamlist=res['data']
-		},'json')
-	},
-	load_all:function(){
-		this.listipnskey();
-		this.getfollows();
-		this.getpeers();
-		this.stream_start();
-	},
-	load_ipns:function(url,name){
-		if(!url) return;
-		if(url.indexOf('/ipns/')<0) return;
-		if(!end_with(url,'/')) url=url+'/';
-		var zs=this;
-		$.ajax({
-			url:url,
-			timeout:20000,
-			success:function(res){
-				if(!res['code']){alerterr(res['data']);return}
-				zs.load_ipfs(res['data']['path'],name);
-			},
-			error:function(){
-				zs.error_ipns_list.push(url);
-				zs.error_ipns_list=$.unique(zs.error_ipns_list);
-			}
-		});
-	},
-	load_ipfs:function(url,name){
-		if(!url) return;
-		if(url.indexOf('/ipfs/')<0) return;
-		if(!end_with(url,'/')) url=url+'/';
-		//var nsk=ipns.replace(/\//g,'');
-		var exist=0;
-		$.each(this.postlist,function(k,v){
-			if(v['url']==url){
-				exist=1;return false;
-			}
-		});
-		if(exist) return;
-		var zs=this;
-		$.get(url+'post.json',function(res){
-			zs.postlist.push({'name':name,'url':url,'dt':res})
-		},'json').then(function(){
-			$.get(url+'meta.json',function(res){
-				if(res['next']){
-					zs.load_ipfs(res['next'],name);
+			do_copy(arr.join("\n"));
+		},
+		getrecipient: function () {
+			var zs = this;
+			$.get('/getrecipient', null, null, 'json').then(function (res) {
+				if (res['code']) {
+					zs.recipient = res.data;
+					zs.getpubkey()
+				} else {
+					$('#pwd_dialog').show();
 				}
-			},'json')
-		});
-	},
+			});
+		},
+		getpubkey: function () {
+			var zs = this;
+			$.get('/getpubkey', function (res) {
+				if (res['code']) {
+					zs.peerid = res['data']['peerid'];
+					zs.pubkey = res['data']['pubkey'];
+				}
+				zs.load_all()
+			}, 'json')
+		},
+		listipnskey: function () {
+			var zs = this;
+			$.ajax({
+				url: '/listipnskey',
+				timeout: 3000,
+				success: function (res) {
+					if (!res['code']) { alerterr(res['data']); return }
+					zs.ipnskeyslist = res['data'];
+				}
+			})
+		},
+		rm_ipnskey: function (nsname) {
+			var zs = this;
+			layconfirm('是否要删除【' + nsname + '】？', function () {
+				$.post('/removeipnskey', { 'nsname': nsname }, function (res) {
+					if (!res['code']) { alerterr(res['data']); return }
+					zs.listipnskey();
+				}, 'json');
+			})
+		},
+		getfollows: function () {
+			var zs = this;
+			zs.followed_ns = [];
+			$.get('/getfollows', function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				$.each(res['data'], function (k, v) {
+					zs.followed_ns.push(v.ns)
+				})
+				zs.followslist = res['data']
+			}, 'json')
+		},
+		follow: function (name, ns) {
+			var zs = this;
+			$.post('/follow', { 'name': name, 'ns': ns }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.getfollows();
+			}, 'json');
+		},
+		unfollow: function (id) {
+			var zs = this;
+			layconfirm('是否要取消关注？', function () {
+				$.post('/unfollow', { 'id': id }, function (res) {
+					if (!res['code']) { alerterr(res['data']); return }
+					zs.getfollows();
+					zs.listipnskey();
+				}, 'json');
+			})
+		},
+		newsecret: function (oldpwd, newpwd) {
+			var zs = this;
+			$.post('/newsecretkey', { 'oldpassword': oldpwd, 'password': newpwd }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				alertok('密码修改成功!', function () {
+					zs.getrecipient();
+				})
+			}, 'json');
+		},
+		getpeers: function () {
+			var zs = this;
+			$.get('/getpeers', function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.peerslist = res['data']
+			}, 'json')
+		},
+		add_peer: function (name, recipient, peerid, peerpubkey) {
+			var zs = this;
+			$.post('/addpeer', { 'name': name, 'recipient': recipient, 'peerid': peerid, 'peerpubkey': peerpubkey }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				alertok('节点添加成功!', function () {
+					zs.getpeers();
+				})
+			}, 'json');
+		},
+		getmessages: function () {
+			var zs = this;
+			$.get('/getpeers', function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.streamlist = res['data']
+			}, 'json')
+		},
+		load_all: function () {
+			this.listipnskey();
+			this.getfollows();
+			this.getpeers();
+			this.stream_start();
+		},
+		load_ipns: function (url, name) {
+			if (!url) return;
+			if (url.indexOf('/ipns/') < 0) return;
+			if (!end_with(url, '/')) url = url + '/';
+			var zs = this;
+			$.ajax({
+				url: url,
+				timeout: 20000,
+				success: function (res) {
+					if (!res['code']) { alerterr(res['data']); return }
+					zs.load_ipfs(res['data']['path'], name);
+				},
+				error: function () {
+					zs.error_ipns_list.push(url);
+					zs.error_ipns_list = $.unique(zs.error_ipns_list);
+				}
+			});
+		},
+		load_ipfs: function (url, name) {
+			if (!url) return;
+			if (url.indexOf('/ipfs/') < 0) return;
+			if (!end_with(url, '/')) url = url + '/';
+			//var nsk=ipns.replace(/\//g,'');
+			var exist = 0;
+			$.each(this.postlist, function (k, v) {
+				if (v['url'] == url) {
+					exist = 1; return false;
+				}
+			});
+			if (exist) return;
+			var zs = this;
+			$.get(url + 'post.json', function (res) {
+				zs.postlist.push({ 'name': name, 'url': url, 'dt': res })
+			}, 'json').then(function () {
+				$.get(url + 'meta.json', function (res) {
+					if (res['next']) {
+						zs.load_ipfs(res['next'], name);
+					}
+				}, 'json')
+			});
+		},
 
-	streamlist:[],
-	stream_on:true,
-	stream_users:[],
-	stream_1:true,
-	stream_start:function(){
-		var zs=this;
-		open_stream(function(dt){
-			if(dt=='started'){
-				stream_1=false;
-				//zs.stream_local();
-				return;
-			}
-			var v=JSON.parse(dt);
-			zs.streamlist.push(v)
-		});
-	},
-	switch_stream:function(el){
-		var zs=this;
-		if(el.checked){
-			zs.stream_on=true;
-			open_stream(function(dt){
-				if(dt=='started') return;
-				var v=JSON.parse(dt);
+		streamlist: [],
+		stream_on: true,
+		stream_users: [],
+		stream_1: true,
+		stream_start: function () {
+			var zs = this;
+			open_stream(function (dt) {
+				if (dt == 'started') {
+					stream_1 = false;
+					//zs.stream_local();
+					return;
+				}
+				var v = JSON.parse(dt);
 				zs.streamlist.push(v)
 			});
-		}else{
-			zs.stream_on=false;
-			close_stream()
-		}
-	},
-	stream_local:function(){
-		$.get('/getmessages',function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			//zs.streamlist.push({'name':name,'url':url,'dt':res})
-		},'json')
-	},
-	peernames_obj:{},
-	peername:function(pid){
-		var zs=this,nm='';
-		if(pid==zs.peerid) return '我';
-		if(pid in zs.peernames_obj) return zs.peernames_obj[pid];
-		$.each(zs.peerslist,function(k,v){
-			if(v['peerid']==pid){
-				zs.peernames_obj[pid]=v.name;
-				nm=v.name;
-				return false;
+		},
+		switch_stream: function (el) {
+			var zs = this;
+			if (el.checked) {
+				zs.stream_on = true;
+				open_stream(function (dt) {
+					if (dt == 'started') return;
+					var v = JSON.parse(dt);
+					zs.streamlist.push(v)
+				});
+			} else {
+				zs.stream_on = false;
+				close_stream()
 			}
-		});
-		return nm;
-	},
-	newstream:function(el){
-		if(!this.stream_on){msgerr('点对点未开启');return;}
-		var zs=this;
-		btn_load('#btn_stream','发送中');
-		var dt={'peerid':el.peerid.value,'body':el.body.value};
-		$.post('/newstream',dt,function(res){
-			btn_ok('#btn_stream','发送');
-			if(!res['code']){alerterr(res['data']);return}
-			zs.streamlist.push({'from':zs.peerid,'message':el.body.value})
-			el.peerid.value='';
-			el.body.value='';
-		})
-	}
-});
+		},
+		stream_local: function () {
+			$.get('/getmessages', function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				//zs.streamlist.push({'name':name,'url':url,'dt':res})
+			}, 'json')
+		},
+		peernames_obj: {},
+		peername: function (pid) {
+			var zs = this, nm = '';
+			if (pid == zs.peerid) return '我';
+			if (pid in zs.peernames_obj) return zs.peernames_obj[pid];
+			$.each(zs.peerslist, function (k, v) {
+				if (v['peerid'] == pid) {
+					zs.peernames_obj[pid] = v.name;
+					nm = v.name;
+					return false;
+				}
+			});
+			return nm;
+		},
+		newstream: function (el) {
+			if (!this.stream_on) { msgerr('点对点未开启'); return; }
+			var zs = this;
+			btn_load('#btn_stream', '发送中');
+			var dt = { 'peerid': el.peerid.value, 'body': el.body.value };
+			$.post('/newstream', dt, function (res) {
+				btn_ok('#btn_stream', '发送');
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.streamlist.push({ 'from': zs.peerid, 'message': el.body.value })
+				el.peerid.value = '';
+				el.body.value = '';
+			})
+		}
+	});
 
-function dlg_new_peer(){
-	layinput('添加新节点','',function(v){
-		v=$.trim(v);
-		if(!v){msgerr('输入节点名称');return;}
-		var new_recipient=$.trim($('#new_recipient').val());
-		if(!new_recipient){msgerr('请输入recipient');return;}
-		var new_peerid=$.trim($('#new_peerid').val());
-		if(!new_peerid){msgerr('请输入peerid');return;}
-		var new_peerpubkey=$.trim($('#new_peerpubkey').val());
-		if(!new_peerpubkey){msgerr('请输入peerpubkey');return;}
-		iv.data.add_peer(v,new_recipient,new_peerid,new_peerpubkey);
-	},function(){
-		var html=`
+	function dlg_new_peer() {
+		layinput('添加新节点', '', function (v) {
+			v = $.trim(v);
+			if (!v) { msgerr('输入节点名称'); return; }
+			var new_recipient = $.trim($('#new_recipient').val());
+			if (!new_recipient) { msgerr('请输入recipient'); return; }
+			var new_peerid = $.trim($('#new_peerid').val());
+			if (!new_peerid) { msgerr('请输入peerid'); return; }
+			var new_peerpubkey = $.trim($('#new_peerpubkey').val());
+			if (!new_peerpubkey) { msgerr('请输入peerpubkey'); return; }
+			iv.data.add_peer(v, new_recipient, new_peerid, new_peerpubkey);
+		}, function () {
+			var html = `
 			<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="节点编号peerid"/>
 			<br/><input type="text" id="new_peerpubkey" class="layui-layer-input" placeholder="节点公钥peerpubkey"/>
 			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="加密公钥recipient"/>
 		`;
-		$(".layui-layer-content").append(html);
-		setTimeout(function(){
-			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','节点名称');
-		},100);
-	})
-}
-
-function dlg_new_secret(){
-	layinput('更新公钥/密码','',function(v){
-		v=$.trim(v);
-		if(!v){msgerr('输入当前密码');return;}
-		var ns=$.trim($('#new_pwd').val());
-		if(!ns){msgerr('未输入新密码');return;}
-		iv.data.newsecret(v,ns);
-	},function(){
-		$(".layui-layer-content").append(`<br/><input type="text" id="new_pwd" class="layui-layer-input" placeholder="新密码"/>`);
-		setTimeout(function(){
-			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','当前密码');
-		},100);
-	})
-}
-function dlg_new_follow(){
-	layinput('请输入关注的频道名和ns','',function(v){
-		v=$.trim(v);
-		if(!v){msgerr('未输入name');return;}
-		var ns=$.trim($('#follow_ns').val());
-		if(!ns){msgerr('未输入ns');return;}
-		iv.data.follow(v,ns);
-	},function(){
-		$(".layui-layer-content").append(`<br/><input type="text" id="follow_ns" class="layui-layer-input" placeholder="输入ns"/>`);
-		setTimeout(function(){
-			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','请输入名称');
-		},100);
-	})
-}
-function dlg_new_ipnskey(){
-	layinput('请输入频道的ns','',function(v){
-		v=$.trim(v);
-		if(!v){msgerr('未输入');return;}
-		$.post('/newipnskey',{'nsname':v},function(res){
-			if(!res['code']){alerterr(res['data']);return}
-			iv.data.listipnskey()
+			$(".layui-layer-content").append(html);
+			setTimeout(function () {
+				$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '节点名称');
+			}, 100);
 		})
-	})
-}
-function chk_ipns_init(nm,fn){
-	var iurl=''
-	$.each(iv.data.ipnskeyslist,function(k,v){
-		if(v[0]==nm){
-			iurl=v[1];return false;
-		}
-	});
-	if(!iurl){fn(1)}
-	$.ajax({
-		url:iurl,
-		timeout:3000,
-		success:function(res){
-			if(!res['code']){fn(0);return}
-			fn(0)
-		},
-		error:function(){fn(1)}
-	});
-}
-
-function publish_content(f){
-	var iptfile=document.getElementById('upfile');
-	var flen=iptfile.files.length;
-	var formdata=new FormData(document.getElementById('publish_form'));
-	if(flen<1){
-		formdata.delete('uploads');
 	}
-	var to0=formdata.get('to0');
-	if(to0=='@all'){
-		formdata.delete('to');
-	}else if(to0=='@me'){
-		formdata.set('to','')
-	}
-	formdata.delete('to0');
-	//loading();
 
-	btn_load('#btn_publish','提交中..')
-	chk_ipns_init(formdata.get('nsname'),function(need_init){
-		if(need_init){
-			formdata.append('init','true');
-		}
-		$.ajax({
-			url:'/publish',
-			type:"POST",
-			data:formdata,
-			dataType:'json',
-			processData:false,
-			contentType:false,
-			error:function(){hideload();alerterr('发布失败');},
-			success:function(res){
-				//hideload()
-				btn_ok('#btn_publish','发表内容')
-				if(res.code=='1'){
-					alertok('发布成功!');
-					iv.data.listipnskey();
-					f.reset()
-				}else{
-					alerterr(res.data)
-				}
+	function dlg_new_secret() {
+		layinput('更新公钥/密码', '', function (v) {
+			v = $.trim(v);
+			if (!v) { msgerr('输入当前密码'); return; }
+			var ns = $.trim($('#new_pwd').val());
+			if (!ns) { msgerr('未输入新密码'); return; }
+			iv.data.newsecret(v, ns);
+		}, function () {
+			$(".layui-layer-content").append(`<br/><input type="text" id="new_pwd" class="layui-layer-input" placeholder="新密码"/>`);
+			setTimeout(function () {
+				$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '当前密码');
+			}, 100);
+		})
+	}
+	function dlg_new_follow() {
+		layinput('请输入关注的频道名和ns', '', function (v) {
+			v = $.trim(v);
+			if (!v) { msgerr('未输入name'); return; }
+			var ns = $.trim($('#follow_ns').val());
+			if (!ns) { msgerr('未输入ns'); return; }
+			iv.data.follow(v, ns);
+		}, function () {
+			$(".layui-layer-content").append(`<br/><input type="text" id="follow_ns" class="layui-layer-input" placeholder="输入ns"/>`);
+			setTimeout(function () {
+				$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '请输入名称');
+			}, 100);
+		})
+	}
+	function dlg_new_ipnskey() {
+		layinput('请输入频道的ns', '', function (v) {
+			v = $.trim(v);
+			if (!v) { msgerr('未输入'); return; }
+			$.post('/newipnskey', { 'nsname': v }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				iv.data.listipnskey()
+			})
+		})
+	}
+	function chk_ipns_init(nm, fn) {
+		var iurl = ''
+		$.each(iv.data.ipnskeyslist, function (k, v) {
+			if (v[0] == nm) {
+				iurl = v[1]; return false;
 			}
-		})
-	})
-	
-}
-function init(){
-	iv.data.getrecipient();
-}
+		});
+		if (!iurl) { fn(1) }
+		$.ajax({
+			url: iurl,
+			timeout: 3000,
+			success: function (res) {
+				if (!res['code']) { fn(0); return }
+				fn(0)
+			},
+			error: function () { fn(1) }
+		});
+	}
 
-$(function(){
-	init();
-})
+	function publish_content(f) {
+		var iptfile = document.getElementById('upfile');
+		var flen = iptfile.files.length;
+		var formdata = new FormData(document.getElementById('publish_form'));
+		if (flen < 1) {
+			formdata.delete('uploads');
+		}
+		var to0 = formdata.get('to0');
+		if (to0 == '@all') {
+			formdata.delete('to');
+		} else if (to0 == '@me') {
+			formdata.set('to', '')
+		}
+		formdata.delete('to0');
+		//loading();
+
+		btn_load('#btn_publish', '提交中..')
+		chk_ipns_init(formdata.get('nsname'), function (need_init) {
+			if (need_init) {
+				formdata.append('init', 'true');
+			}
+			$.ajax({
+				url: '/publish',
+				type: "POST",
+				data: formdata,
+				dataType: 'json',
+				processData: false,
+				contentType: false,
+				error: function () { hideload(); alerterr('发布失败'); },
+				success: function (res) {
+					//hideload()
+					btn_ok('#btn_publish', '发表内容')
+					if (res.code == '1') {
+						alertok('发布成功!');
+						iv.data.listipnskey();
+						f.reset()
+					} else {
+						alerterr(res.data)
+					}
+				}
+			})
+		})
+
+	}
+	function init() {
+		iv.data.getrecipient();
+	}
+
+	$(function () {
+		init();
+	})
 
 
 
 </script>
+
 </html>
 {{end}}
