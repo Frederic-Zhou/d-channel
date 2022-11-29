@@ -49,7 +49,8 @@
 						&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;"
 							class="clink">删除</a>
 						&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}"
-							i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
+							i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink"><i title="follow"
+								class="fa-solid fa-bell"></i></a>
 					</li>
 				</ul>
 
