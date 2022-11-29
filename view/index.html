@@ -432,11 +432,12 @@ var iv=ice.view('#app',{
 	},
 	peernames_obj:{},
 	peername:function(pid){
-		if(pid in peernames_obj) return peernames_obj[pid];
 		var zs=this,nm='';
+		if(pid==zs.peerid) return '我';
+		if(pid in zs.peernames_obj) return zs.peernames_obj[pid];
 		$.each(zs.peerslist,function(k,v){
 			if(v['peerid']==pid){
-				peernames_obj[pid]=v.name;
+				zs.peernames_obj[pid]=v.name;
 				nm=v.name;
 				return false;
 			}
