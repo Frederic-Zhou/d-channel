@@ -139,7 +139,7 @@
 	</div>
 </div>
 
-<input type="text" id="copytxt" value="" style="opacity:0;height:1px;"/>
+<input type="text" id="copytxt" value="" style="opacity:0;height:1px;" readonly/>
 
 <div style="height:50px">&nbsp;</div>
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
@@ -200,14 +200,14 @@ function close_stream(){
 	}
 	evtSc = null;
 }
-function left(mainStr,lngLen) {
-	if (lngLen>0) {return mainStr.substring(0,lngLen)}
-	else{return null}
+function left(str,len) {
+	if(len>0) {return str.substring(0,len)}
+	else{return ''}
 }
-function right(mainStr,lngLen){
-	if (mainStr.length-lngLen>=0 && mainStr.length>=0 && mainStr.length-lngLen<=mainStr.length) {
-	return mainStr.substring(mainStr.length-lngLen,mainStr.length)}
-	else{return null}
+function right(str,len){
+	if (str.length-len>=0 && str.length>=0 && str.length-len<=str.length) {
+	return str.substring(str.length-len,str.length)}
+	else{return ''}
 }
 
 
