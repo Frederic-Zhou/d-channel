@@ -4,7 +4,7 @@
 
 <head>
 	<meta charset="utf-8" />
-	<title>ipfs</title>
+	<title>D-Channel</title>
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
 	<meta name="renderer" content="webkit" />
 	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
@@ -16,41 +16,41 @@
 
 <body id="app">
 <div class="w3-panel w3-blue w3-card-4 mt0 p10">
-	<p class="m0">peerid：{%peerid%}</p>
-	<p class="el m0">pubkey：{%pubkey%}</p>
-	<p class="m0">Recipient：{%recipient%}</p>
-	<p class="m0"><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">修改密码</a></p>
+	<p class="m0">节点编号：{%peerid%}</p>
+	<p class="el m0">节点公钥：{%pubkey%}</p>
+	<p class="m0">加密公钥：{%recipient%}</p>
+	<p class="m0"><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a></p>
 </div>
 
 <div class="wrap mt20">
 	<div class="row col-sp12">
 		<div class="w4">
-			<div class="w3-blue p5">ipnskeys</div>
+			<div class="w3-blue p5">频道</div>
 			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增ipnskey</a></li>
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
 				<li i-for="ipnskeyslist">
 					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" class="clink">{%item[1]%}</a>
-					&nbsp; <a i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
-					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
+					&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
+					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
 				</li>
 			</ul>
 			
-			<div class="w3-blue p5 mt10">follows</div>
+			<div class="w3-blue p5 mt10">关注的频道</div>
 			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增follow</a></li>
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
 				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" class="clink">{%item.ns%}</a>
 				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
 				</li>
 			</ul>
-			<div class="w3-blue p5 mt10">peers</div>
+			<div class="w3-blue p5 mt10">节点列表</div>
 			<ul class="w3-ul w3-border bk">
-				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增peers</a></li>
+				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增节点</a></li>
 				<li i-for="peerslist">{%item.name%}</li>
 			</ul>
-			<div class="w3-blue p5 mt10">stream</div>
+			<div class="w3-blue p5 mt10">点对点</div>
 			<ul class="w3-ul w3-border bk" >
 				<li>
-					<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">set stream</label>
+					<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">开启点对点</label>
 				</li>
 				<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 				<li i-for="streamlist"><b>{%item.from%}:</b>{%item.message%}</li>
@@ -69,7 +69,7 @@
 				<div class="w3-container w3-blue"><h3>发表内容</h3></div>
 				<form class="w3-container" id="publish_form" onsubmit="publish_content(this);return false;">
 					<div class="w3-section">
-						<label>ipfs ns：</label>
+						<label>频道：</label>
 						<select name="nsname" class="w3-select">
 							<option i-for="ipnskeyslist" value="{%item[0]%}">{%item[0]%}</option>
 						</select>
@@ -129,9 +129,9 @@
 		<div class="w3-container">
 			<span onclick="$('id01').hide()" class="w3-button w3-display-topright">&times;</span>
 			<form class="w3-container" onsubmit="set_local_pwd(this);return false;">
-				<p><label>Local Password</label>
+				<p><label>密码验证</label>
 				<input class="w3-input" type="password" name="password" /></p>
-				<button type="submit" class="w3-btn w3-blue">Set Password</button>
+				<button type="submit" class="w3-btn w3-blue">确定</button>
 			</form>
 		</div>
 	</div>
@@ -362,7 +362,7 @@ var iv=ice.view('#app',{
 		}
 	},
 	newstream:function(el){
-		if(!this.stream_on){msgerr('stream 未开启');return;}
+		if(!this.stream_on){msgerr('点对点未开启');return;}
 		var zs=this;
 		btn_load('#btn_stream','发送中');
 		var dt={'peerid':el.peerid.value,'body':el.body.value};
@@ -386,9 +386,9 @@ function dlg_new_peer(){
 		iv.data.add_peer(v,new_recipient,new_peerid,new_peerpubkey);
 	},function(){
 		var html=`
-			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="recipient"/>
-			<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="peerid"/>
-			<br/><textarea id="new_peerpubkey" class="layui-layer-input" placeholder="peerpubkey" style="width:260px"></textarea>
+			<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="解密公钥recipient"/>
+			<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="节点编号peerid"/>
+			<br/><textarea id="new_peerpubkey" class="layui-layer-input" placeholder="节点公钥peerpubkey" style="width:260px"></textarea>
 		`;
 		$(".layui-layer-content").append(html);
 		setTimeout(function(){
@@ -397,7 +397,7 @@ function dlg_new_peer(){
 	})
 }
 function dlg_new_secret(){
-	layinput('设置新密码','',function(v){
+	layinput('更新公钥/密码','',function(v){
 		v=$.trim(v);
 		if(!v){msgerr('输入当前密码');return;}
 		var ns=$.trim($('#new_pwd').val());
@@ -411,7 +411,7 @@ function dlg_new_secret(){
 	})
 }
 function dlg_new_follow(){
-	layinput('请输入follow的name和ns','',function(v){
+	layinput('请输入关注的频道名和ns','',function(v){
 		v=$.trim(v);
 		if(!v){msgerr('未输入name');return;}
 		var ns=$.trim($('#follow_ns').val());
@@ -420,12 +420,12 @@ function dlg_new_follow(){
 	},function(){
 		$(".layui-layer-content").append(`<br/><input type="text" id="follow_ns" class="layui-layer-input" placeholder="输入ns"/>`);
 		setTimeout(function(){
-			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','请输入name');
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder','请输入名称');
 		},100);
 	})
 }
 function dlg_new_ipnskey(){
-	layinput('请输入ipnskey的nsname','',function(v){
+	layinput('请输入频道的ns','',function(v){
 		v=$.trim(v);
 		if(!v){msgerr('未输入');return;}
 		$.post('/newipnskey',{'nsname':v},function(res){
