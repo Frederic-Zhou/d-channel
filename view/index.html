@@ -11,9 +11,7 @@
 	<link rel="stylesheet" href="/asset/css/w3.css" />
 	<link rel="stylesheet" href="/asset/css/css.css" />
 	<link rel="shortcut icon" href="/asset/favicon.ico">
-	<link href="/asset/fontawesome/css/fontawesome.css" rel="stylesheet">
-	<link href="/asset/fontawesome/css/brands.css" rel="stylesheet">
-	<link href="/asset/fontawesome/css/solid.css" rel="stylesheet">
+	<link href="/asset/fontawesome/css/font-awesome.min.css" rel="stylesheet">
 	<script type="text/javascript" src="/asset/js/jquery1.9.1.min.js"></script>
 
 </head>
@@ -22,15 +20,15 @@
 	<div class="w3-panel w3-blue w3-card-4 mt0 p10">
 
 		<p class="m0" title="{%peerid%}">节点编号(peerid)：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}"
-				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="el m0" title="{%pubkey%}">节点公钥(pubkey)：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}"
-				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}"
-				href="javascript:;" class="cfff"><i title="copy" class="fa-solid fa-copy"></i></a></p>
+				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="m0">
 			<a href="javascript:;" class="w3-btn w3-teal"
 				i-onclick="{%copy_all('节点编号:',peerid,'节点公钥:',pubkey,'加密公钥:',recipient)%}"><i title="copy all"
-					class="fa-solid fa-copy"></i></a>
+					class="fa fa-copy"></i></a>
 			<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
 		</p>
 	</div>
@@ -45,11 +43,11 @@
 						{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1],item[0])%}"
 							title="{%item[1]%}" class="clink">{%ecstr(item[1],8,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink"><i title="copy"
-								class="fa-solid fa-copy"></i></a>
+								class="fa fa-copy"></i></a>
 						&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;"
-							class="clink">删除</a>
+							class="clink"><i class="fa fa-trash-o"></i></a>
 						&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}"
-							i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
+							i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink"><i class="fa fa-heart-o"></i></a>
 					</li>
 				</ul>
 
@@ -60,9 +58,9 @@
 							i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}"
 							class="clink">{%ecstr(item.ns,8,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy"
-								class="fa-solid fa-copy"></i></a>
+								class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i
-								title="unfollow" class="fa-solid fa-bell-slash"></i></a>
+								title="unfollow" class="fa fa-bell-slash"></i></a>
 					</li>
 				</ul>
 				<div class="w3-blue p5 mt10">节点列表</div>
@@ -72,7 +70,7 @@
 						{%item.name%}:<a href="javascript:;" title="{%item.peerid%}"
 							class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy"
-								class="fa-solid fa-copy"></i></a>
+								class="fa fa-copy"></i></a>
 					</li>
 				</ul>
 				<div class="w3-blue p5 mt10">点对点</div>
@@ -83,8 +81,7 @@
 					</li>
 					<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 						<li i-for="streamlist">
-							<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}"
-								href="javascript:;" class="clink"><i title="copy" class="fa-solid fa-copy"></i></a>
+							<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 							{%item.message%}
 						</li>
 					</div>
@@ -134,8 +131,7 @@
 							<!--<input type="hidden" name="init" value="true" />-->
 						</div>
 						<div class="w3-section">
-							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i
-									class="fa-solid fa-cloud-arrow-up"></i></button>
+							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i class="fa fa-cloud-upload"></i></button>
 						</div>
 					</form>
 				</div>
@@ -402,6 +398,7 @@
 			if (url.indexOf('/ipns/') < 0) return;
 			if (!end_with(url, '/')) url = url + '/';
 			var zs = this;
+			zs.postlist=[]
 			$.ajax({
 				url: url,
 				timeout: 20000,
