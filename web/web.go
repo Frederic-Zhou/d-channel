@@ -40,6 +40,7 @@ func Start(addr string) error {
 	IpfsNode = ipfsnode.IpfsNode
 
 	router := gin.Default()
+	router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
 
 	//设置静态文件
 	router.Static("/asset", "./asset")
@@ -78,6 +79,7 @@ func Start(addr string) error {
 	router.POST("/subtopic", subTopicHandler) //pubsub 订阅topic
 
 	router.GET("/index", indexHandler)
+	router.GET("/", indexHandler)
 
 	return router.Run(addr)
 }
