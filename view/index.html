@@ -63,7 +63,7 @@
 				</li>
 				<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 				<li i-for="streamlist">
-					<b>{%ecstr(item.from,6,6)%}:</b><a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink">复制</a>
+					<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink">复制</a>
 					{%item.message%}
 				</li>
 				</div>
@@ -429,6 +429,19 @@ var iv=ice.view('#app',{
 			zs.stream_on=false;
 			close_stream()
 		}
+	},
+	peernames_obj:{},
+	peername:function(pid){
+		if(pid in peernames_obj) return peernames_obj[pid];
+		var zs=this,nm='';
+		$.each(zs.peerslist,function(k,v){
+			if(v['peerid']==pid){
+				peernames_obj[pid]=v.name;
+				nm=v.name;
+				return false;
+			}
+		});
+		return nm;
 	},
 	newstream:function(el){
 		if(!this.stream_on){msgerr('点对点未开启');return;}
