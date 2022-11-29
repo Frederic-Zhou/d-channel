@@ -16,9 +16,9 @@
 
 <body id="app">
 <div class="w3-panel w3-blue w3-card-4 mt0 p10">
-	<p class="m0">节点编号：{%peerid%}</p>
-	<p class="el m0">节点公钥：{%pubkey%}</p>
-	<p class="m0">加密公钥：{%recipient%}</p>
+	<p class="m0">节点编号：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}" href="javascript:;" class="cfff">复制</a></p>
+	<p class="el m0">节点公钥：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}" href="javascript:;" class="cfff">复制</a></p>
+	<p class="m0">加密公钥：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}" href="javascript:;" class="cfff">复制</a></p>
 	<p class="m0"><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a></p>
 </div>
 
@@ -29,7 +29,8 @@
 			<ul class="w3-ul w3-border bk">
 				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
 				<li i-for="ipnskeyslist">
-					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" class="clink">{%item[1]%}</a>
+					{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1])%}" class="clink">{%ecstr(item[1],14,6)%}</a>
+					&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink">复制</a>
 					&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink">删除</a>
 					&nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink">follow</a>
 				</li>
@@ -38,7 +39,8 @@
 			<div class="w3-blue p5 mt10">关注的频道</div>
 			<ul class="w3-ul w3-border bk">
 				<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
-				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" class="clink">{%item.ns%}</a>
+				<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns)%}" class="clink">{%ecstr(item.ns,14,6)%}</a>
+				&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink">复制</a>
 				&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink">unfollow</a>
 				</li>
 			</ul>
@@ -137,6 +139,7 @@
 	</div>
 </div>
 
+<input type="text" id="copytxt" value="" style="opacity:0;height:1px;"/>
 
 <div style="height:50px">&nbsp;</div>
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
@@ -148,6 +151,14 @@
 function btn_ok(btn,txt){$(btn).removeAttr('disabled').removeAttr('style').html(txt);}
 function btn_load(btn,txt){$(btn).attr('disabled','disabled').attr('style','background-color:#616161 !important').html(txt);}
 
+var el_copy=$('#copytxt').get(0)
+function do_copy(str){
+	el_copy.value=str;
+	el_copy.select();
+	document.execCommand("Copy");
+	el_copy.blur();
+	layer.msg('已复制',{time:600});
+}
 
 
 function set_local_pwd(f){
@@ -189,6 +200,15 @@ function close_stream(){
 	}
 	evtSc = null;
 }
+function left(mainStr,lngLen) {
+	if (lngLen>0) {return mainStr.substring(0,lngLen)}
+	else{return null}
+}
+function right(mainStr,lngLen){
+	if (mainStr.length-lngLen>=0 && mainStr.length>=0 && mainStr.length-lngLen<=mainStr.length) {
+	return mainStr.substring(mainStr.length-lngLen,mainStr.length)}
+	else{return null}
+}
 
 
 var iv=ice.view('#app',{
@@ -196,6 +216,17 @@ var iv=ice.view('#app',{
 	postlist:[],
 	error_ipns_list:[],
 	p2p_on:[],
+	pubkey:'',peerid:'',recipient:'',
+	ecstr:function(v,l1,l2){
+		return left(v,l1)+'......'+right(v,l2);
+	},
+	copy:function(str){
+		el_copy.value=str;
+		el_copy.select();
+		document.execCommand("Copy");
+		el_copy.blur();
+		layer.msg('已复制',{time:600});
+	},
 	getrecipient:function(){
 		var zs=this;
 		$.get('/getrecipient',null,null,'json').then(function(res){
@@ -301,6 +332,7 @@ var iv=ice.view('#app',{
 		this.listipnskey();
 		this.getfollows();
 		this.getpeers();
+		this.stream_start();
 	},
 	load_ipns:function(url){
 		if(!url) return;
@@ -345,8 +377,16 @@ var iv=ice.view('#app',{
 	},
 
 	streamlist:[],
-	stream_on:false,
+	stream_on:true,
 	stream_users:[],
+	stream_start:function(){
+		var zs=this;
+		open_stream(function(dt){
+			if(dt=='started') return;
+			var v=JSON.parse(dt);
+			zs.streamlist.push(v)
+		});
+	},
 	switch_stream:function(el){
 		var zs=this;
 		if(el.checked){
