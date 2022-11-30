@@ -2,15 +2,12 @@ package ipfsnode
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"path/filepath"
 	"sync"
@@ -23,16 +20,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"
 	"github.com/ipfs/kubo/core/node/libp2p" // This package is needed so that all the preloaded plugins are loaded automatically
-	"github.com/ipfs/kubo/p2p"
 	"github.com/ipfs/kubo/plugin/loader"
 	"github.com/ipfs/kubo/repo/fsrepo"
-	manet "github.com/multiformats/go-multiaddr/net"
 
 	// ldformat "github.com/ipfs/go-ipld-format"
 
@@ -45,10 +39,10 @@ var IpfsNode *core.IpfsNode
 const P2PMessageProto = "/x/message"
 const StreamMessageProto = "/chat/1.0"
 
-func Start(ctx context.Context, repo string) {
+func Start(ctx context.Context, repoPath string) {
 	// Spawn a local peer using a temporary path, for testing purposes
 	var err error
-	IpfsAPI, IpfsNode, err = Spawn(ctx, repo)
+	IpfsAPI, IpfsNode, err = Spawn(ctx, repoPath)
 
 	if err != nil {
 		panic(fmt.Errorf("failed to spawn peer node: %s", err))
@@ -77,7 +71,7 @@ func setupPlugins(externalPluginsPath string) error {
 	return nil
 }
 
-func createRepo(repo string) (string, error) {
+func createRepo(repoPath string) error {
 
 	var cfg *config.Config
 	var err error
@@ -92,23 +86,23 @@ func createRepo(repo string) (string, error) {
 		options.Key.Type("ed25519"),
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 	cfg, err = config.InitWithIdentity(identity)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	cfg.Experimental.Libp2pStreamMounting = true
 	cfg.Experimental.P2pHttpProxy = true
 
 	// Create the repo with the config
-	err = fsrepo.Init(repo, cfg)
+	err = fsrepo.Init(repoPath, cfg)
 	if err != nil {
-		return "", fmt.Errorf("failed to init node: %s", err)
+		return fmt.Errorf("failed to init node: %s", err)
 	}
 
-	return repo, nil
+	return nil
 }
 
 /// ------ Spawning the node
@@ -135,7 +129,7 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 var loadPluginsOnce sync.Once
 
 // Spawns a node to be used just for this run (i.e. creates a tmp repo)
-func Spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, error) {
+func Spawn(ctx context.Context, repoPath string) (icore.CoreAPI, *core.IpfsNode, error) {
 	var onceErr error
 	loadPluginsOnce.Do(func() {
 		onceErr = setupPlugins("")
@@ -144,7 +138,7 @@ func Spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, err
 		return nil, nil, onceErr
 	}
 	// Create a  Repo
-	repoPath, err := createRepo(repo)
+	err := createRepo(repoPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create repo: %s", err)
 	}
@@ -159,7 +153,8 @@ func Spawn(ctx context.Context, repo string) (icore.CoreAPI, *core.IpfsNode, err
 	return api, node, err
 }
 
-// / -------
+// ------- P2P listener
+/*
 func ListenLocal(ctx context.Context, readchan chan []byte, port string) (err error) {
 
 	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port))
@@ -268,6 +263,7 @@ func SendMessage(peerID string, message string, port string) (err error) {
 	return
 
 }
+*/
 
 func SetStreamHandler(readchan chan string) {
 	hosts := []host.Host{
