@@ -93,9 +93,6 @@ func createRepo(repoPath string) error {
 		return err
 	}
 
-	cfg.Experimental.Libp2pStreamMounting = true
-	cfg.Experimental.P2pHttpProxy = true
-
 	// Create the repo with the config
 	err = fsrepo.Init(repoPath, cfg)
 	if err != nil {
@@ -115,12 +112,33 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 		return nil, err
 	}
 
+	cfg, err := repo.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.Experimental.Libp2pStreamMounting = true
+	cfg.Experimental.P2pHttpProxy = true
+	cfg.Ipns.RepublishPeriod = "2h"
+	cfg.Ipns.RecordLifetime = "48h"
+	cfg.Ipns.UsePubsub = config.True
+	cfg.Swarm.RelayClient.Enabled = config.True
+	cfg.Swarm.RelayService.Enabled = config.True
+	cfg.Pubsub.Enabled = config.True
+
+	repo.SetConfig(cfg)
+
 	// Construct the node
 	nodeOptions := &core.BuildCfg{
-		Online:  true,
-		Routing: libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
+		Online:    true,
+		Permanent: true,
+		Routing:   libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
 		// Routing: libp2p.DHTClientOption, // This option sets the node to be a client DHT node (only fetching records)
 		Repo: repo,
+		ExtraOpts: map[string]bool{
+			"pubsub": true,
+			"ipnsps": true,
+		},
 	}
 
 	return core.NewNode(ctx, nodeOptions)
