@@ -61,6 +61,7 @@
 					<li i-for="peerslist">
 						{%item.name%}:<a href="javascript:;" i-onclick="{%set_stream_id(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+						&nbsp; <a i-onclick="{%set_stream_id(item.peerid)%}" href="javascript:;" class="clink"><i title="chat" class="fa fa-comments-o"></i></a>
 					</li>
 				</ul>
 				<div class="w3-blue p5 mt10">点对点</div>
@@ -134,12 +135,12 @@
 					</div>
 					<ul class="w3-ul bk">
 						<li i-for="postlist">
-							<p><b>{%item.name%}: </b>{%item.dt.body%}</p>
-							<p i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</p>
-							<p i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
+							<div><b>{%item.name%}: </b><div i-html="{%render_body(item.dt.body)%}"></div></div>
+							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
+							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
 								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}"
 									target="_blank">{%att%}</a>
-							</p>
+							</div>
 						</li>
 					</ul>
 				</div>
@@ -277,6 +278,9 @@ var iv = ice.view('#app', {
 			arr.push(arguments[i]);
 		}
 		do_copy(arr.join("\n"));
+	},
+	render_body:function(v){
+		return v.replace(/\n/g,'<br />')
 	},
 	getrecipient: function () {
 		var zs = this;
