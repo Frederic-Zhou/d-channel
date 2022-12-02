@@ -67,21 +67,20 @@
 				<div class="w3-blue p5 mt10">点对点</div>
 				<ul class="w3-ul w3-border bk">
 					<li>
-						<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}"
-								i-onclick="switch_stream">开启点对点</label>
+						<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">开启点对点</label>
 					</li>
-					<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
+					<div id="chatlist" style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 						<li i-for="streamlist">
 							<b>{%peername(item.from)%}</b> → <b style="color:#FF66FF">{%peername(item.to)%}</b>:
-							<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
-							<a i-onclick="{%set_stream_id(item.from)%}" href="javascript:;" class="clink"><i title="reply" class="fa fa-reply"></i></a>
+							<!--<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>-->
+							<a href="javascript:;" i-onclick="{%set_stream_id(item.pid)%}" class="clink"><i title="reply" class="fa fa-reply"></i></a>
 							{%item.message%}
 						</li>
 					</div>
 					<li>
 						<form class="" onsubmit="return false;" i-onsubmit="newstream">
-							<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" i-model="stream_peerid" required />
-							<input class="w3-input w3-border" name="body" type="text" placeholder="内容" required />
+							<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" id="stream_peerid" required />
+							<input class="w3-input w3-border" name="body" id="chatbody" type="text" placeholder="内容" required />
 							<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
 						</form>
 					</li>
@@ -105,7 +104,7 @@
 							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_checkbox').hide()" />仅自己可见</label>
 							<label><input type="radio" class="w3-radio" name="to0" value="toother" onclick="$('#to_checkbox').show()" checked />加密发布</label>
 							<div id="to_checkbox" class="p15 w3-pale-green">
-								<div  i-for="peerslist">
+								<div i-for="peerslist">
 									<label><input type="checkbox" class="w3-check" name="to" value="{%item.recipient%}" />【{%item.name%}】{%ecstr(item.peerid,12,6)%}</label>
 								</div>
 							</div>
@@ -140,8 +139,7 @@
 							<div><b>{%item.name%}: </b><div i-html="{%render_body(item.dt.body)%}"></div></div>
 							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
 							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
-								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}"
-									target="_blank">{%att%}</a>
+								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
 							</div>
 						</li>
 					</ul>
@@ -200,6 +198,7 @@
 
 
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
+<script type="text/javascript" src="/asset/js/dream-msg.min.js"></script>
 <script type="text/javascript" src="/asset/js/iceView.js"></script>
 <script type="text/javascript" src="/asset/js/fn.js"></script>
 <script type="text/javascript">
@@ -483,7 +482,9 @@ var iv = ice.view('#app', {
 	listenfolloweds:function(){
 		var zs = this;
 		open_stream1('/listenfolloweds',function(dt){
-			console.log(dt)
+			if(dt=='started') return;
+			var v=JSON.parse(dt);
+			Dreamer.info('【'+v.name+'】有新文档更新！');
 		});
 	},
 
@@ -491,17 +492,18 @@ var iv = ice.view('#app', {
 	stream_on: true,
 	stream_users: [],
 	stream_1: true,
+	stream_msg:function(dt){
+		if (dt == 'started') return;
+		var v = JSON.parse(dt);
+		v['to']=this.peerid;
+		v['pid']=v.from;
+		this.streamlist.push(v)
+		$('#chatlist').get(0).scrollTop=99999;
+	},
 	stream_start: function () {
 		var zs = this;
 		open_stream('/setstream',function (dt) {
-			if (dt == 'started') {
-				stream_1 = false;
-				//zs.stream_local();
-				return;
-			}
-			var v = JSON.parse(dt);
-			v['to']=zs.peerid;
-			zs.streamlist.push(v)
+			zs.stream_msg(dt);
 		});
 	},
 	switch_stream: function (el) {
@@ -509,10 +511,7 @@ var iv = ice.view('#app', {
 		if (el.checked) {
 			zs.stream_on = true;
 			open_stream('/setstream',function (dt) {
-				if (dt == 'started') return;
-				var v = JSON.parse(dt);
-				v['to']=zs.peerid;
-				zs.streamlist.push(v)
+				zs.stream_msg(dt);
 			});
 		} else {
 			zs.stream_on = false;
@@ -547,14 +546,14 @@ var iv = ice.view('#app', {
 		$.post('/newstream', dt, function (res) {
 			btn_ok('#btn_stream', '发送');
 			if (!res['code']) { alerterr(res['data']); return }
-			zs.streamlist.push({ 'from': zs.peerid,'to':el.peerid.value, 'message': el.body.value })
+			zs.streamlist.push({ 'from': zs.peerid,'to':el.peerid.value,'pid':el.peerid.value, 'message': el.body.value })
 			el.peerid.value = '';
 			el.body.value = '';
 		})
 	},
-	stream_peerid:'',
 	set_stream_id:function(pid){
-		this.stream_peerid=pid
+		$('#stream_peerid').val(pid)
+		$('#chatbody').focus()
 	},
 	publish_key:'',
 	set_publish_key:function(k){
