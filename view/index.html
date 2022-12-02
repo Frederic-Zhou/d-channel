@@ -549,6 +549,7 @@ var iv = ice.view('#app', {
 			zs.streamlist.push({ 'from': zs.peerid,'to':el.peerid.value,'pid':el.peerid.value, 'message': el.body.value })
 			el.peerid.value = '';
 			el.body.value = '';
+			$('#chatlist').get(0).scrollTop=99999;
 		})
 	},
 	set_stream_id:function(pid){
