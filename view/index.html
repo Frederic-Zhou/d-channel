@@ -62,6 +62,7 @@
 						{%item.name%}:<a href="javascript:;" i-onclick="{%set_stream_id(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%set_stream_id(item.peerid)%}" href="javascript:;" class="clink"><i title="chat" class="fa fa-comments-o"></i></a>
+						&nbsp; <a i-onclick="{%set_publish_key(item.pubkey)%}" href="javascript:;" class="clink" title="publish to him"><i class="fa fa-pencil-square-o"></i></a>
 						&nbsp; <a i-onclick="{%rm_peer(item.ID,item.name)%}" href="javascript:;" class="clink" title="remove peer"><i class="fa fa-bell-slash"></i></a>
 					</li>
 				</ul>
@@ -73,8 +74,8 @@
 					</li>
 					<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 						<li i-for="streamlist">
-							<b>{%peername(item.from)%} </b>{%ecstr(item.from,6,6)%}:<a i-onclick="{%copy(item.from)%}"
-								href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+							<b>{%peername(item.from)%} </b>{%ecstr(item.from,4,4)%}:
+							<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 							{%item.message%}
 						</li>
 					</div>
@@ -101,13 +102,10 @@
 						</div>
 						<div class="w3-section">
 							<label>发送目标：</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@all"
-									onclick="$('#to_ipt').hide()" />所有人</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@me"
-									onclick="$('#to_ipt').hide()" />仅自己可见</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@other"
-									onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
-							<input class="w3-input" id="to_ipt" name="to" type="text" placeholder="发送目标" />
+							<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_ipt').hide()" />所有人</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_ipt').hide()" />仅自己可见</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@other" onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
+							<input class="w3-input" id="to_ipt" name="to" type="text" i-model="publish_key" placeholder="发送目标" />
 						</div>
 						<div class="w3-section">
 							<label>内容类型：</label>
@@ -328,7 +326,6 @@ var iv = ice.view('#app', {
 		var zs = this;
 		$.ajax({
 			url: '/listipnskey',
-			timeout: 3000,
 			success: function (res) {
 				if (!res['code']) { alerterr(res['data']); return }
 				zs.ipnskeyslist = res['data'];
@@ -427,7 +424,6 @@ var iv = ice.view('#app', {
 		zs.postlist = []
 		$.ajax({
 			url: url,
-			timeout: 20000,
 			success: function (res) {
 				if (!res['code']) { alerterr(res['data']); return }
 				zs.load_ipfs(res['data']['path'], name);
@@ -528,7 +524,12 @@ var iv = ice.view('#app', {
 	stream_peerid:'',
 	set_stream_id:function(pid){
 		this.stream_peerid=pid
-	}
+	},
+	publish_key:'',
+	set_publish_key:function(k){
+		this.publish_key=k;
+		$('input[name=t0][value="@other"]').prop('checked')
+	},
 });
 
 function dlg_new_peer() {
@@ -593,24 +594,6 @@ function dlg_new_ipnskey() {
 		})
 	})
 }
-function chk_ipns_init(nm, fn) {
-	var iurl = ''
-	$.each(iv.data.ipnskeyslist, function (k, v) {
-		if (v[0] == nm) {
-			iurl = v[1]; return false;
-		}
-	});
-	if (!iurl) { fn(1) }
-	$.ajax({
-		url: iurl,
-		timeout: 3000,
-		success: function (res) {
-			if (!res['code']) { fn(0); return }
-			fn(0)
-		},
-		error: function () { fn(1) }
-	});
-}
 
 function publish_content(f) {
 	var iptfile = document.getElementById('upfile');
@@ -629,32 +612,26 @@ function publish_content(f) {
 	//loading();
 
 	btn_load('#btn_publish', '提交中..')
-	chk_ipns_init(formdata.get('nsname'), function (need_init) {
-		if (need_init) {
-			formdata.append('init', 'true');
-		}
-		$.ajax({
-			url: '/publish',
-			type: "POST",
-			data: formdata,
-			dataType: 'json',
-			processData: false,
-			contentType: false,
-			error: function () { hideload(); alerterr('发布失败'); },
-			success: function (res) {
-				//hideload()
-				btn_ok('#btn_publish', '发表内容')
-				if (res.code == '1') {
-					alertok('发布成功!');
-					iv.data.listipnskey();
-					f.reset()
-				} else {
-					alerterr(res.data)
-				}
+	$.ajax({
+		url: '/publish',
+		type: "POST",
+		data: formdata,
+		dataType: 'json',
+		processData: false,
+		contentType: false,
+		error: function () { hideload(); alerterr('发布失败'); },
+		success: function (res) {
+			//hideload()
+			btn_ok('#btn_publish', '发表内容')
+			if (res.code == '1') {
+				alertok('发布成功!');
+				iv.data.listipnskey();
+				f.reset()
+			} else {
+				alerterr(res.data)
 			}
-		})
+		}
 	})
-
 }
 function init() {
 	iv.data.getrecipient();
