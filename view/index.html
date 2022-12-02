@@ -72,8 +72,9 @@
 					</li>
 					<div style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
 						<li i-for="streamlist">
-							<b>{%peername(item.from)%} </b>{%ecstr(item.from,4,4)%}:
+							<b>{%peername(item.from)%}</b> → <b style="color:#FF66FF">{%peername(item.to)%}</b>:
 							<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+							<a i-onclick="{%set_stream_id(item.from)%}" href="javascript:;" class="clink"><i title="reply" class="fa fa-reply"></i></a>
 							{%item.message%}
 						</li>
 					</div>
@@ -257,7 +258,7 @@ function open_stream(url,fn) {
 	evtSc = new EventSource(url);
 	evtSc.onmessage = function (e) {
 		fn(e.data)
-		console.log(e)
+		//console.log(e)
 	}
 	evtSc.onerror = function (e) {
 		console.log(e)
@@ -276,7 +277,7 @@ function open_stream1(url,fn) {
 	evt1 = new EventSource(url);
 	evt1.onmessage = function (e) {
 		fn(e.data)
-		console.log(e)
+		//console.log(e)
 	}
 	evt1.onerror = function (e) {
 		console.log(e)
@@ -499,6 +500,7 @@ var iv = ice.view('#app', {
 				return;
 			}
 			var v = JSON.parse(dt);
+			v['to']=zs.peerid;
 			zs.streamlist.push(v)
 		});
 	},
@@ -509,6 +511,7 @@ var iv = ice.view('#app', {
 			open_stream('/setstream',function (dt) {
 				if (dt == 'started') return;
 				var v = JSON.parse(dt);
+				v['to']=zs.peerid;
 				zs.streamlist.push(v)
 			});
 		} else {
@@ -544,7 +547,7 @@ var iv = ice.view('#app', {
 		$.post('/newstream', dt, function (res) {
 			btn_ok('#btn_stream', '发送');
 			if (!res['code']) { alerterr(res['data']); return }
-			zs.streamlist.push({ 'from': zs.peerid, 'message': el.body.value })
+			zs.streamlist.push({ 'from': zs.peerid,'to':el.peerid.value, 'message': el.body.value })
 			el.peerid.value = '';
 			el.body.value = '';
 		})
