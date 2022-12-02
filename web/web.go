@@ -85,37 +85,23 @@ func ipnsHandler(c *gin.Context) {
 	nsValue := c.Param("ns")
 	fpath := c.Param("path")
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var fullPath path.Path
-	var err error
-
 	if !strings.HasPrefix(nsValue, "/ipns/") {
 		nsValue = "/ipns/" + nsValue
 	}
 
 	ns, err := localstore.GetOneFollow(nsValue)
 	if err != nil {
-		log.Println("ipns path", nsValue+fpath)
-		fullPath, err = IpfsAPI.Name().Resolve(ctx, "/ipns/"+nsValue+fpath,
-			options.Name.Cache(true),
-			options.Name.ResolveOption(nsopts.Depth(1)),
-			options.Name.ResolveOption(nsopts.DhtTimeout(30*time.Second)),
-		)
-	} else {
-		fullPath = path.New(ns.Latest + fpath)
-	}
-
-	if err != nil {
 		log.Println("err", err)
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("need add follow %s", err.Error())))
 		return
 	}
 
-	log.Println("ipfs", fullPath.String())
+	if ns.Latest == "" {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, "wait moment"))
+		return
+	}
 
-	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": fullPath.String()}))
+	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": ns.Latest + fpath}))
 }
 
 // 获得ipfs数据
@@ -277,11 +263,6 @@ func publishHandler(c *gin.Context) {
 		log.Println("publish success", nsEntry)
 
 	}()
-
-	// if err != nil {
-	// 	c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
-	// 	return
-	// }
 
 	thisNS.Latest = cid.String()
 	err = thisNS.Save()
@@ -580,6 +561,8 @@ func listenFollowedsHandler(c *gin.Context) {
 
 						u, _ := json.Marshal(a)
 						chanStream <- string(u)
+						_ = beeep.Notify("channel update", a.Name, "")
+
 					}
 				}
 
