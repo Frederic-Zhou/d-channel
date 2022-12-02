@@ -79,7 +79,7 @@ func Start(addr string) error {
 
 // 解析ipns
 func ipnsHandler(c *gin.Context) {
-	nsName := c.Param("ns")
+	nsValue := c.Param("ns")
 	fpath := c.Param("path")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,10 +88,10 @@ func ipnsHandler(c *gin.Context) {
 	var fullPath path.Path
 	var err error
 
-	ns, err := localstore.GetOneFollow(nsName)
+	ns, err := localstore.GetOneFollow(nsValue)
 	if err != nil {
-		log.Println("ipns path", nsName+fpath)
-		fullPath, err = IpfsAPI.Name().Resolve(ctx, nsName+fpath,
+		log.Println("ipns path", nsValue+fpath)
+		fullPath, err = IpfsAPI.Name().Resolve(ctx, nsValue+fpath,
 			options.Name.Cache(true),
 			options.Name.ResolveOption(nsopts.Depth(1)),
 			options.Name.ResolveOption(nsopts.DhtTimeout(30*time.Second)),
