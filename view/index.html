@@ -100,10 +100,14 @@
 						</div>
 						<div class="w3-section">
 							<label>发送目标：</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_ipt').hide()" />所有人</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_ipt').hide()" />仅自己可见</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="toother" onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
-							<input class="w3-input" id="to_ipt" name="to" type="text" i-model="publish_key" placeholder="发送目标" />
+							<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_checkbox').hide()" />所有人</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_checkbox').hide()" />仅自己可见</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="toother" onclick="$('#to_checkbox').show()" checked />加密发布</label>
+							<div id="to_checkbox" class="p15 w3-pale-green">
+								<div  i-for="peerslist">
+									<label><input type="checkbox" class="w3-check" name="to" value="{%item.recipient%}" />【{%item.name%}】{%ecstr(item.peerid,12,6)%}</label>
+								</div>
+							</div>
 						</div>
 						<div class="w3-section">
 							<label>内容类型：</label>
@@ -525,8 +529,9 @@ var iv = ice.view('#app', {
 	publish_key:'',
 	set_publish_key:function(k){
 		this.publish_key=k;
-		$('input[name=to0][value="toother"]').prop('checked',true);
-		$('#to_ipt').show();
+		$('input[name=to][value='+k+']').prop('checked',true);
+		//$('input[name=to0][value="toother"]').prop('checked',true);
+		$('#to_checkbox').show();
 	},
 });
 
@@ -601,7 +606,8 @@ function publish_content(f) {
 	if (to0 == '@all') {
 		formdata.delete('to');
 	} else if (to0 == '@me') {
-		formdata.set('to', '')
+		formdata.delete('to');
+		formdata.append('to','');
 	}
 	formdata.delete('to0');
 	//loading();
