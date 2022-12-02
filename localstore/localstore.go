@@ -2,6 +2,7 @@ package localstore
 
 import (
 	"path/filepath"
+	"strings"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -32,11 +33,20 @@ func WriteMessage(body string) (err error) {
 }
 
 func AddFollow(name, ns string, isself bool) error {
+
+	if !strings.HasPrefix(ns, "/ipns/") {
+		ns = "/ipns/" + ns
+	}
+
 	return db.Create(&Follow{Name: name, NS: ns, IsSelf: isself}).Error
 }
 
 func UnFollow(id string) error {
 	return db.Unscoped().Delete(&Follow{}, id).Error
+}
+
+func DelSelfNS(nsName string) error {
+	return db.Unscoped().Delete(&Follow{}, "name=? and is_self=1", nsName).Error
 }
 
 func AddPeer(name, recipient, peerID string) error {
@@ -55,13 +65,12 @@ func (p *Peer) Save() error {
 }
 
 func GetFollows(skip, limit int) (follows []Follow, err error) {
-
-	err = db.Where("is_self=0").Order("id desc").Offset(skip).Limit(limit).Find(&follows).Error
+	err = db.Where("is_self<>1 or is_self is null").Order("id desc").Offset(skip).Limit(limit).Find(&follows).Error
 	return
 }
 
-func GetOneFollow(nsName string) (ns Follow, err error) {
-	err = db.Where("ns = ?", nsName).First(&ns).Error
+func GetOneFollow(nsValue string) (ns Follow, err error) {
+	err = db.Where("ns = ?", nsValue).First(&ns).Error
 	return
 }
 
@@ -85,7 +94,7 @@ type Follow struct {
 	Name   string `json:"name" gorm:"default:'';unique"`
 	NS     string `json:"ns" gorm:"default:'';unique"`
 	Latest string `json:"latest"`
-	IsSelf bool   `json:"isself"`
+	IsSelf bool   `json:"isself" gorm:"default:0"`
 }
 
 type Peer struct {

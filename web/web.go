@@ -11,6 +11,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	nsopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/core"
+	"gorm.io/gorm"
 )
 
 const indexFile = "post.json"
@@ -88,10 +90,14 @@ func ipnsHandler(c *gin.Context) {
 	var fullPath path.Path
 	var err error
 
+	if !strings.HasPrefix(nsValue, "/ipns/") {
+		nsValue = "/ipns/" + nsValue
+	}
+
 	ns, err := localstore.GetOneFollow(nsValue)
 	if err != nil {
 		log.Println("ipns path", nsValue+fpath)
-		fullPath, err = IpfsAPI.Name().Resolve(ctx, nsValue+fpath,
+		fullPath, err = IpfsAPI.Name().Resolve(ctx, "/ipns/"+nsValue+fpath,
 			options.Name.Cache(true),
 			options.Name.ResolveOption(nsopts.Depth(1)),
 			options.Name.ResolveOption(nsopts.DhtTimeout(30*time.Second)),
@@ -359,6 +365,12 @@ func removeIpnsKeyHandler(c *gin.Context) {
 		return
 	}
 
+	err = localstore.DelSelfNS(nsname)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, key.Path().String()))
 }
 
@@ -373,6 +385,15 @@ func listIpnsKeyHandler(c *gin.Context) {
 	}
 	keysArr := [][]string{}
 	for _, key := range keys {
+
+		_, err := localstore.GetOneFollow(key.Path().String())
+		if err == gorm.ErrRecordNotFound {
+			err = localstore.AddFollow(key.Name(), key.Path().String(), true)
+			if err != nil {
+				continue
+			}
+		}
+
 		keysArr = append(keysArr, []string{key.Name(), key.Path().String()})
 	}
 
@@ -534,7 +555,7 @@ func listenFollowedsHandler(c *gin.Context) {
 			case <-time.After(5 * time.Second):
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
-					path, err := IpfsAPI.Name().Resolve(c, a.NS,
+					path, err := IpfsAPI.Name().Resolve(ctx, a.NS,
 						options.Name.Cache(false),
 						options.Name.ResolveOption(nsopts.Depth(1)),
 					)
