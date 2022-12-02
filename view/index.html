@@ -21,13 +21,11 @@
 
 		<p class="m0" title="{%peerid%}">节点编号(peerid)：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}"
 				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
-		<p class="el m0" title="{%pubkey%}">节点公钥(pubkey)：{%ecstr(pubkey,8,8)%} <a i-onclick="{%copy(pubkey)%}"
-				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}"
 				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="m0">
 			<a href="javascript:;" class="w3-btn w3-teal"
-				i-onclick="{%copy_all('节点编号:',peerid,'节点公钥:',pubkey,'加密公钥:',recipient)%}"><i title="copy all" class="fa fa-copy"></i></a>
+				i-onclick="{%copy_all('节点编号:',peerid,加密公钥:',recipient)%}"><i title="copy all" class="fa fa-copy"></i></a>
 			<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
 		</p>
 	</div>
@@ -62,7 +60,7 @@
 						{%item.name%}:<a href="javascript:;" i-onclick="{%set_stream_id(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%set_stream_id(item.peerid)%}" href="javascript:;" class="clink"><i title="chat" class="fa fa-comments-o"></i></a>
-						&nbsp; <a i-onclick="{%set_publish_key(item.pubkey)%}" href="javascript:;" class="clink" title="publish to him"><i class="fa fa-pencil-square-o"></i></a>
+						&nbsp; <a i-onclick="{%set_publish_key(item.recipient)%}" href="javascript:;" class="clink" title="publish to him"><i class="fa fa-pencil-square-o"></i></a>
 						&nbsp; <a i-onclick="{%rm_peer(item.ID,item.name)%}" href="javascript:;" class="clink" title="remove peer"><i class="fa fa-bell-slash"></i></a>
 					</li>
 				</ul>
@@ -104,7 +102,7 @@
 							<label>发送目标：</label>
 							<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_ipt').hide()" />所有人</label>
 							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_ipt').hide()" />仅自己可见</label>
-							<label><input type="radio" class="w3-radio" name="to0" value="@other" onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="toother" onclick="$('#to_ipt').show().focus()" checked />加密发布</label>
 							<input class="w3-input" id="to_ipt" name="to" type="text" i-model="publish_key" placeholder="发送目标" />
 						</div>
 						<div class="w3-section">
@@ -284,7 +282,7 @@ var iv = ice.view('#app', {
 	postlist: [],
 	error_ipns_list: [],
 	p2p_on: [],
-	pubkey: '', peerid: '', recipient: '',
+	peerid: '', recipient: '',
 	ecstr: function (v, l1, l2) {
 		return left(v, l1) + '...' + right(v, l2);
 	},
@@ -306,18 +304,17 @@ var iv = ice.view('#app', {
 		$.get('/getrecipient', null, null, 'json').then(function (res) {
 			if (res['code']) {
 				zs.recipient = res.data;
-				zs.getpubkey()
+				zs.getpeerid()
 			} else {
 				$('#pwd_dialog').show();
 			}
 		});
 	},
-	getpubkey: function () {
+	getpeerid: function () {
 		var zs = this;
-		$.get('/getpubkey', function (res) {
+		$.get('/getid', function (res) {
 			if (res['code']) {
 				zs.peerid = res['data']['peerid'];
-				zs.pubkey = res['data']['pubkey'];
 			}
 			zs.load_all()
 		}, 'json')
@@ -385,9 +382,9 @@ var iv = ice.view('#app', {
 			zs.peerslist = res['data']
 		}, 'json')
 	},
-	add_peer: function (name, recipient, peerid, peerpubkey) {
+	add_peer: function (name, recipient, peerid) {
 		var zs = this;
-		$.post('/addpeer', { 'name': name, 'recipient': recipient, 'peerid': peerid, 'peerpubkey': peerpubkey }, function (res) {
+		$.post('/addpeer', { 'name': name, 'recipient': recipient, 'peerid': peerid }, function (res) {
 			if (!res['code']) { alerterr(res['data']); return }
 			alertok('节点添加成功!', function () {
 				zs.getpeers();
@@ -528,7 +525,8 @@ var iv = ice.view('#app', {
 	publish_key:'',
 	set_publish_key:function(k){
 		this.publish_key=k;
-		$('input[name=t0][value="@other"]').prop('checked')
+		$('input[name=to0][value="toother"]').prop('checked',true);
+		$('#to_ipt').show();
 	},
 });
 
@@ -540,18 +538,15 @@ function dlg_new_peer() {
 		if (!new_recipient) { msgerr('请输入recipient'); return; }
 		var new_peerid = $.trim($('#new_peerid').val());
 		if (!new_peerid) { msgerr('请输入peerid'); return; }
-		var new_peerpubkey = $.trim($('#new_peerpubkey').val());
-		if (!new_peerpubkey) { msgerr('请输入peerpubkey'); return; }
-		iv.data.add_peer(v, new_recipient, new_peerid, new_peerpubkey);
+		iv.data.add_peer(v, new_recipient, new_peerid);
 	}, function () {
 		var html = `
 		<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="节点编号peerid"/>
-		<br/><input type="text" id="new_peerpubkey" class="layui-layer-input" placeholder="节点公钥peerpubkey"/>
 		<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="加密公钥recipient"/>
 	`;
 		$(".layui-layer-content").append(html);
 		setTimeout(function () {
-			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '节点名称');
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '节点名称(自定义)');
 		}, 100);
 	})
 }
