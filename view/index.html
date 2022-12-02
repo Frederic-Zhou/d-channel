@@ -252,9 +252,9 @@ function set_local_pwd(f) {
 
 
 var evtSc = null;
-function open_stream(fn) {
+function open_stream(url,fn) {
 	if (evtSc) evtSc.close();
-	evtSc = new EventSource('/setstream');
+	evtSc = new EventSource(url);
 	evtSc.onmessage = function (e) {
 		fn(e.data)
 		console.log(e)
@@ -269,6 +269,26 @@ function close_stream() {
 	}
 	evtSc = null;
 }
+
+var evt1 = null;
+function open_stream1(url,fn) {
+	if (evt1) evt1.close();
+	evt1 = new EventSource(url);
+	evt1.onmessage = function (e) {
+		fn(e.data)
+		console.log(e)
+	}
+	evt1.onerror = function (e) {
+		console.log(e)
+	}
+}
+function close_stream1() {
+	if (evt1) {
+		evt1.close()
+	}
+	evt1 = null;
+}
+
 function left(str, len) {
 	if (len > 0) { return str.substring(0, len) }
 	else { return '' }
@@ -416,6 +436,7 @@ var iv = ice.view('#app', {
 		this.getfollows();
 		this.getpeers();
 		this.stream_start();
+		this.listenfolloweds();
 	},
 	load_ipns: function (url, name) {
 		if (!url) return;
@@ -458,6 +479,12 @@ var iv = ice.view('#app', {
 			}, 'json')
 		});
 	},
+	listenfolloweds:function(){
+		var zs = this;
+		open_stream1('/listenfolloweds',function(dt){
+			console.log(dt)
+		});
+	},
 
 	streamlist: [],
 	stream_on: true,
@@ -465,7 +492,7 @@ var iv = ice.view('#app', {
 	stream_1: true,
 	stream_start: function () {
 		var zs = this;
-		open_stream(function (dt) {
+		open_stream('/setstream',function (dt) {
 			if (dt == 'started') {
 				stream_1 = false;
 				//zs.stream_local();
@@ -479,7 +506,7 @@ var iv = ice.view('#app', {
 		var zs = this;
 		if (el.checked) {
 			zs.stream_on = true;
-			open_stream(function (dt) {
+			open_stream('/setstream',function (dt) {
 				if (dt == 'started') return;
 				var v = JSON.parse(dt);
 				zs.streamlist.push(v)
