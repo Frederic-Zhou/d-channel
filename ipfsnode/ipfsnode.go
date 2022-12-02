@@ -119,11 +119,11 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 
 	cfg.Experimental.Libp2pStreamMounting = true
 	cfg.Experimental.P2pHttpProxy = true
-	cfg.Ipns.RepublishPeriod = "2h"
-	cfg.Ipns.RecordLifetime = "48h"
+	cfg.Ipns.RepublishPeriod = "4h"
+	cfg.Ipns.RecordLifetime = "24h"
 	cfg.Ipns.UsePubsub = config.True
 	cfg.Swarm.RelayClient.Enabled = config.True
-	cfg.Swarm.RelayService.Enabled = config.True
+	cfg.Swarm.RelayService.Enabled = config.Default
 	cfg.Pubsub.Enabled = config.True
 
 	repo.SetConfig(cfg)

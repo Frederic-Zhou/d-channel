@@ -5,7 +5,6 @@ import (
 	"context"
 	"d-channel/ipfsnode"
 	"d-channel/secret"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,10 +21,9 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	nsopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/core"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 const indexFile = "post.json"
@@ -53,7 +51,7 @@ func Start(addr string) error {
 	router.GET("/getfollows", getFollowsHandler)           //获得所有关注的ipns
 	router.GET("/getpeers", getPeersHandler)               //从数据库中获得所有对等好友
 	router.GET("/getmessages", getMessagesHandler)         //从数据库中获得p2p消息
-	router.GET("/getpubkey", getPubkeyHandler)             //获得自己的pubkey和peerid
+	router.GET("/getid", getIDHandler)                     //获得自己peerid
 	router.GET("/listipnskey", listIpnsKeyHandler)         //列出自己的ipnskey
 	router.GET("/listenfolloweds", listenFollowedsHandler) //监听跟进的ipns，返回stream message
 
@@ -66,11 +64,6 @@ func Start(addr string) error {
 	router.POST("/addpeer", addPeertHandler)            // 添加对等好友
 	router.POST("/unfollow", unFollowHandler)           // 删除关注
 	router.POST("/removepeer", removePeertHandler)      // 删除好友
-
-	/** 去掉P2P监听模式的点对点消息，用stream代替。保留代码
-		router.POST("/listenp2p", listenP2PHandler) //（优先使用 setstream）开启监听p2p，返回stream message
-		router.POST("/sendp2p", sendP2PHandler)     //（优先使用 newstream）发送p2p消息
-	**/
 
 	router.GET("/setstream", setStreamHandler)  //开启监听p2p，返回stream message
 	router.POST("/newstream", newStreamHandler) //发送p2p消息
@@ -86,18 +79,34 @@ func Start(addr string) error {
 
 // 解析ipns
 func ipnsHandler(c *gin.Context) {
-	ns := c.Param("ns")
+	nsName := c.Param("ns")
 	fpath := c.Param("path")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	fullPath, err := IpfsAPI.Name().Resolve(ctx, ns+fpath)
+	var fullPath path.Path
+	var err error
+
+	ns, err := localstore.GetOneFollow(nsName)
+	if err != nil {
+		log.Println("ipns path", nsName+fpath)
+		fullPath, err = IpfsAPI.Name().Resolve(ctx, nsName+fpath,
+			options.Name.Cache(true),
+			options.Name.ResolveOption(nsopts.Depth(1)),
+			options.Name.ResolveOption(nsopts.DhtTimeout(30*time.Second)),
+		)
+	} else {
+		fullPath = path.New(ns.Latest + fpath)
+	}
 
 	if err != nil {
+		log.Println("err", err)
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("err %s", err.Error())))
 		return
 	}
+
+	log.Println("ipfs", fullPath.String())
 
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{"path": fullPath.String()}))
 }
@@ -191,14 +200,12 @@ func publishHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if !postparams.Init {
-		next, err := IpfsAPI.Name().Resolve(ctx, ipnskey.Path().String())
-		if err != nil {
-			c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %s", err.Error())))
-			return
-		}
-		postparams.Next = next.String()
+	thisNS, err := localstore.GetOneFollow(ipnskey.Path().String())
+	if err != nil && thisNS.IsSelf {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %v %v", err, thisNS.IsSelf)))
+		return
 	}
+	postparams.Next = thisNS.Latest
 
 	/// --- 3. 获得组织加密公钥
 	//如果postparams.To 有值，那么加上自己的 secretkey ,否则自己是看不到自己发的消息的
@@ -250,9 +257,18 @@ func publishHandler(c *gin.Context) {
 	}
 
 	/// --- 8. 发布新的cid到self IPNS
-	nsEntry, err := IpfsAPI.Name().Publish(ctx, cid, options.Name.Key(ipnskey.Name()))
+	nsEntry, err := IpfsAPI.Name().Publish(ctx, cid,
+		options.Name.Key(ipnskey.Name()),
+		options.Name.ValidTime(time.Hour*24))
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
+		return
+	}
+
+	thisNS.Latest = cid.String()
+	err = thisNS.Save()
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("save err: %s", err.Error())))
 		return
 	}
 
@@ -318,6 +334,12 @@ func newIpnsKeyHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	key, err := IpfsAPI.Key().Generate(ctx, nsname)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+		return
+	}
+
+	err = localstore.AddFollow(nsname, key.Path().String(), true)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -438,18 +460,11 @@ func getMessagesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, messages))
 }
 
-func getPubkeyHandler(c *gin.Context) {
-
-	b, err := crypto.MarshalPublicKey(IpfsNode.PrivateKey.GetPublic())
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
-		return
-	}
+func getIDHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, ResponseJsonFormat(1,
 		map[string]string{
 			"peerid": IpfsNode.Identity.String(),
-			"pubkey": base64.RawURLEncoding.EncodeToString(b),
 		}))
 }
 
@@ -462,7 +477,7 @@ func followHandler(c *gin.Context) {
 		return
 	}
 
-	err := localstore.AddFollow(name, ns)
+	err := localstore.AddFollow(name, ns, false)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -483,37 +498,13 @@ func unFollowHandler(c *gin.Context) {
 func addPeertHandler(c *gin.Context) {
 	name := c.DefaultPostForm("name", "")
 	recipient := c.DefaultPostForm("recipient", "")
-	peerPubKey := c.DefaultPostForm("peerpubkey", "")
 	peerID := c.DefaultPostForm("peerid", "")
 	if name == "" && recipient == "" {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "null name or recipient"))
 		return
 	}
 
-	pidbyte, err := base64.RawURLEncoding.DecodeString(peerPubKey)
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "b64:"+err.Error()))
-		return
-	}
-
-	pk, err := crypto.UnmarshalPublicKey(pidbyte)
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "unmarshal:"+err.Error()))
-		return
-	}
-
-	pid, err := peer.IDFromPublicKey(pk)
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "idfrompk:"+err.Error()))
-		return
-	}
-
-	if pid.String() != peerID {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, "peerid not matches"))
-		return
-	}
-
-	err = localstore.AddPeer(name, recipient, peerPubKey, peerID)
+	err := localstore.AddPeer(name, recipient, peerID)
 	if err != nil {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
@@ -543,7 +534,10 @@ func listenFollowedsHandler(c *gin.Context) {
 			case <-time.After(5 * time.Second):
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
-					path, err := IpfsAPI.Name().Resolve(c, a.NS)
+					path, err := IpfsAPI.Name().Resolve(c, a.NS,
+						options.Name.Cache(false),
+						options.Name.ResolveOption(nsopts.Depth(1)),
+					)
 					if err != nil {
 						continue
 					}

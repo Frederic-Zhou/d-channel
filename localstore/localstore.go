@@ -31,16 +31,16 @@ func WriteMessage(body string) (err error) {
 	return db.Create(&Message{Body: body}).Error
 }
 
-func AddFollow(name, ns string) error {
-	return db.Create(&Follow{Name: name, NS: ns}).Error
+func AddFollow(name, ns string, isself bool) error {
+	return db.Create(&Follow{Name: name, NS: ns, IsSelf: isself}).Error
 }
 
 func UnFollow(id string) error {
 	return db.Unscoped().Delete(&Follow{}, id).Error
 }
 
-func AddPeer(name, recipient, pubkey, peerID string) error {
-	return db.Create(&Peer{Name: name, Recipient: recipient, PubKey: pubkey, PeerID: peerID}).Error
+func AddPeer(name, recipient, peerID string) error {
+	return db.Create(&Peer{Name: name, Recipient: recipient, PeerID: peerID}).Error
 }
 func RemovePeer(id string) error {
 	return db.Unscoped().Delete(&Peer{}, id).Error
@@ -56,7 +56,12 @@ func (p *Peer) Save() error {
 
 func GetFollows(skip, limit int) (follows []Follow, err error) {
 
-	err = db.Order("id desc").Offset(skip).Limit(limit).Find(&follows).Error
+	err = db.Where("is_self=0").Order("id desc").Offset(skip).Limit(limit).Find(&follows).Error
+	return
+}
+
+func GetOneFollow(nsName string) (ns Follow, err error) {
+	err = db.Where("ns = ?", nsName).First(&ns).Error
 	return
 }
 
@@ -80,12 +85,12 @@ type Follow struct {
 	Name   string `json:"name" gorm:"default:'';unique"`
 	NS     string `json:"ns" gorm:"default:'';unique"`
 	Latest string `json:"latest"`
+	IsSelf bool   `json:"isself"`
 }
 
 type Peer struct {
 	gorm.Model
 	Name      string `json:"name" gorm:"default:'';unique"`
 	Recipient string `json:"recipient" gorm:"default:'';unique"`
-	PubKey    string `json:"pubkey" gorm:"default:'';unique"`
 	PeerID    string `json:"peerid" gorm:"default:'';unique"`
 }
