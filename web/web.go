@@ -18,6 +18,7 @@ import (
 	"d-channel/localstore"
 
 	"filippo.io/age"
+	"github.com/gen2brain/beeep"
 	"github.com/gin-gonic/gin"
 	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
@@ -672,6 +673,7 @@ func setStreamHandler(c *gin.Context) {
 			}
 			c.SSEvent("message", msg)
 
+			_ = beeep.Notify("message", msg, "")
 			return true
 		}
 		return false

@@ -2,3 +2,4 @@ repo
 *.exe
 localstore.db
 secretkeys.key
+d-channel.code-workspace
