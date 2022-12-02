@@ -204,9 +204,6 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	thisNS, err := localstore.GetOneFollow(ipnskey.Path().String())
 	if err != nil && thisNS.IsSelf {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("resolve err: %v %v", err, thisNS.IsSelf)))
@@ -256,6 +253,8 @@ func publishHandler(c *gin.Context) {
 	metaJson, _ := json.Marshal(postparams.meta)
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	/// --- 7. 将整个 postMap（包含post.json和所有附件）， 添加到IPFS网络,获得cid
 	cid, err := IpfsAPI.Unixfs().Add(ctx, files.NewMapDirectory(postMap))
 	if err != nil {
@@ -263,14 +262,26 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
+	log.Println("----Publishing---")
 	/// --- 8. 发布新的cid到self IPNS
-	nsEntry, err := IpfsAPI.Name().Publish(ctx, cid,
-		options.Name.Key(ipnskey.Name()),
-		options.Name.ValidTime(time.Hour*24))
-	if err != nil {
-		c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
-		return
-	}
+	go func() {
+		nsEntry, err := IpfsAPI.Name().Publish(context.Background(), cid,
+			options.Name.Key(ipnskey.Name()),
+			options.Name.ValidTime(time.Hour*24))
+
+		if err != nil {
+			log.Println("publish err", err)
+			return
+		}
+
+		log.Println("publish success", nsEntry)
+
+	}()
+
+	// if err != nil {
+	// 	c.JSON(http.StatusOK, ResponseJsonFormat(0, fmt.Sprintf("publish err: %s", err.Error())))
+	// 	return
+	// }
 
 	thisNS.Latest = cid.String()
 	err = thisNS.Save()
@@ -279,11 +290,11 @@ func publishHandler(c *gin.Context) {
 		return
 	}
 
-	log.Println("name:", nsEntry.Name(), "value:", nsEntry.Value().String())
+	// log.Println("name:", nsEntry.Name(), "value:", nsEntry.Value().String())
 	//返回结果
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, map[string]string{
-		"name":  nsEntry.Name(),
-		"value": nsEntry.Value().String(),
+		"name":  ipnskey.Name(),
+		"value": cid.String(),
 	}))
 }
 
