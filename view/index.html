@@ -24,8 +24,7 @@
 		<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}"
 				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
 		<p class="m0">
-			<a href="javascript:;" class="w3-btn w3-teal"
-				i-onclick="{%copy_all('节点编号:',peerid,加密公钥:',recipient)%}"><i title="copy all" class="fa fa-copy"></i></a>
+			<a href="javascript:;" class="w3-btn w3-teal" i-onclick="{%copy_all('节点编号:',peerid,'加密公钥:',recipient)%}"><i title="copy all" class="fa fa-copy"></i></a>
 			<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
 		</p>
 	</div>
