@@ -50,6 +50,7 @@
 					<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i title="unfollow" class="fa fa-bell-slash"></i></a>
+						<span class="new_msg" style="color:red" data-name="{%item.name%}"></span>
 					</li>
 				</ul>
 				<div class="w3-blue p5 mt10">节点列表</div>
@@ -483,7 +484,9 @@ var iv = ice.view('#app', {
 		open_stream1('/listenfolloweds',function(dt){
 			if(dt=='started') return;
 			var v=JSON.parse(dt);
+			console.log(v)
 			Dreamer.info('【'+v.name+'】有新文档更新！');
+			$('.new_msg[data-name='+v.name+']').html('new')
 		});
 	},
 
