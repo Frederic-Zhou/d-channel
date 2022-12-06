@@ -216,6 +216,7 @@ div.dib{*display:inline;*zoom:1;}
 .cfff{color:#fff}
 .c666{color:#666}
 .clink{color:#0066CC}
+.cred{color:red}
 
 .w100{width:100%;}
 .n{font-weight:normal;font-style:normal;white-space:normal;}
@@ -258,3 +259,10 @@ li{list-style:none;}
 .msgs .send .img{float:right;background-color:#FF9933;}
 .msgs .send .nm{right:70px;left:auto}
 .msgs .send .bd{left:auto;float:right}
+
+/*上传界面*/
+.updiv{display:inline-block;text-align:center;z-index:0;border:2px dashed #ddd;background-color: #f9f9f9;padding:18px;min-height:120px;min-width:240px}
+#btn_file{position:relative;z-index:11;}
+.uplist{font-size:14px}
+.uplist p{display:block;margin:4px}
+.dropdiv{left:0;top:0;bottom:0;right:0;z-index:0;padding-top:72px;font-size:14px}
