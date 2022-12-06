@@ -285,6 +285,7 @@ func publishHandler(c *gin.Context) {
 	postMap[indexFile] = files.NewBytesFile(data)
 
 	/// --- 6. 将meta对象，重新序列化为json，并作为meta.json文件保存
+	postparams.meta.CreatedAt = time.Now()
 	metaJson, _ := json.Marshal(postparams.meta)
 	postMap[metaFile] = files.NewBytesFile(metaJson)
 
@@ -615,6 +616,7 @@ func listenFollowedsHandler(c *gin.Context) {
 						err = IpfsAPI.Pin().Add(ctx, path)
 						if err != nil {
 							log.Println("resovle pin err:", err)
+							continue
 						}
 						log.Println("get new path and pin", a.Latest, path)
 
@@ -622,6 +624,7 @@ func listenFollowedsHandler(c *gin.Context) {
 						err := a.Save()
 						if err != nil {
 							log.Println("save follow err", err)
+							continue
 						}
 						log.Println("follow", a)
 
@@ -732,7 +735,11 @@ func setStreamHandler(c *gin.Context) {
 			}
 			c.SSEvent("message", msg)
 
-			_ = beeep.Notify("message", msg, "")
+			msgbody := map[string]string{}
+
+			_ = json.Unmarshal([]byte(msg), &msgbody)
+
+			_ = beeep.Notify("message", msgbody["msg"], "")
 			return true
 		}
 		return false
@@ -878,7 +885,7 @@ type post struct {
 
 // 元数据对象，这个对象中的内容将不加密
 type meta struct {
-	CreatedAt time.Time `json:"createdAt" form:"createdAt"`
+	CreatedAt time.Time `json:"createdAt" form:"-"`
 	To        []string  `json:"to" form:"to"`
 	Next      string    `json:"next" form:"next"`
 }
