@@ -647,7 +647,7 @@ func listenFollowedsHandler(c *gin.Context) {
 
 						u, _ := json.Marshal(a)
 						chanStream <- string(u)
-						_ = beeep.Notify("channel update", a.Name, "")
+						_ = beeep.Notify("channel update", a.Name, "./asset/favicon.ico")
 
 					}
 				}
@@ -758,7 +758,7 @@ func setStreamHandler(c *gin.Context) {
 				msgbody["msg"] = err.Error()
 			}
 
-			_ = beeep.Notify("message", msgbody["msg"], "")
+			_ = beeep.Notify("message", msgbody["msg"], "./asset/favicon.ico")
 			return true
 		}
 		return false
@@ -818,6 +818,7 @@ func subTopicHandler(c *gin.Context) {
 			})
 
 			c.SSEvent("message", string(msgJsonByte))
+			_ = beeep.Notify("topic", string(msg.Data()), "./asset/favicon.ico")
 
 			return true
 		}
