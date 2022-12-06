@@ -505,6 +505,23 @@ func getPeersHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
 		return
 	}
+
+	//尝试连接一遍其他节点。
+	go func(ps []localstore.Peer) {
+		for _, p := range ps {
+
+			pid, err := peer.Decode(p.PeerID)
+			if err != nil {
+				return
+			}
+			pInfo, err := IpfsAPI.Dht().FindPeer(context.Background(), pid)
+			if err != nil {
+				return
+			}
+			IpfsAPI.Swarm().Connect(context.Background(), pInfo)
+		}
+	}(peers)
+
 	c.JSON(http.StatusOK, ResponseJsonFormat(1, peers))
 }
 
