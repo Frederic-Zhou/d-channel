@@ -47,7 +47,7 @@
 				<div class="w3-blue p5 mt10">关注的频道</div>
 				<ul class="w3-ul w3-border bk">
 					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
-					<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,6)%}</a>[{%fmt_date(item.UpdatedAt)%}]
+					<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,4)%}</a>[{%fmt_date(item.UpdatedAt)%}]
 						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i title="unfollow" class="fa fa-bell-slash"></i></a>
 						<a i-onclick="{%load_listen_ipfs(item.name)%}" class="new_msg" href="javascript:;" style="color:red" data-name="{%item.name%}"></a>
@@ -140,7 +140,11 @@
 					</div>
 					<ul class="w3-ul bk">
 						<li i-for="postlist">
-							<div><b>{%item.name%}: </b><div i-html="{%item.dt.body%}"></div></div>
+							<div>
+								<b>{%item.name%}: </b>
+								<span class="tm c666" i-if="{%item.tm%}">时间:{%item.tm%}</span>
+								<div i-html="{%item.dt.body%}"></div>
+							</div>
 							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
 							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
 								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
@@ -334,7 +338,6 @@ var iv = ice.view('#app', {
 		return v.replace(/\n/g,'<br />')
 	},
 	fmt_date:function(v){
-		console.log(v)
 		return format_date(v)
 	},
 	getrecipient: function () {
@@ -484,7 +487,18 @@ var iv = ice.view('#app', {
 		});
 		if (exist) return;
 		var zs = this;
-		$.get(url + 'post.json', function (res) {
+		$.get(url + 'meta.json', function (res) {
+			if(res['next']){
+				zs.load_ipfs(res['next'], name);
+			}
+			$.get(url+'post.json',function(res1){
+				if(!('body' in res1)){return}
+				res['body']=marked.parse(res1['body']);
+				var tm=('createdAt' in res)?format_date(res['createdAt']):''
+				zs.postlist.push({ 'name': name,'url':url,'tm':tm, 'dt': res1, })
+			},'json')
+		}, 'json')
+		/*$.get(url + 'post.json', function (res) {
 			if(!('body' in res)){return}
 			res['body']=marked.parse(res['body']);
 			zs.postlist.push({ 'name': name, 'url': url, 'dt': res })
@@ -494,7 +508,7 @@ var iv = ice.view('#app', {
 					zs.load_ipfs(res['next'], name);
 				}
 			}, 'json')
-		});
+		});*/
 	},
 
 	listen_obj:{},
