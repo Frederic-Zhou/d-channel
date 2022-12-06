@@ -120,12 +120,16 @@
 						</div>
 						<div class="w3-section">
 							<label>附件上传：</label>
-							<input type="file" name="uploads" id="upfile" />
+							<input style="position:absolate;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
+							<div id="upfile_div" class="updiv rel">
+								<a class="w3-btn w3-blue w3-small" id="btn_file" href="javascript:;">点此选择文件(多选)</a>
+								<div class="uplist" id="uplist"><p class="clink">未选择</p></div>
+								<div class="dropdiv abs" id="dropdiv">或将文件拖放到此处<!--<br/>或粘贴(CTRL+V)图片或截图到这里--></div>
+							</div>
 							<!--<input type="hidden" name="init" value="true" />-->
 						</div>
 						<div class="w3-section">
-							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i
-									class="fa fa-cloud-upload"></i></button>
+							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i class="fa fa-cloud-upload"></i></button>
 						</div>
 					</form>
 				</div>
@@ -147,7 +151,6 @@
 			</div>
 		</div>
 	</div>
-
 
 
 
@@ -687,8 +690,53 @@ function init() {
 	iv.data.getrecipient();
 }
 
+
+function formatBytes(size){ 
+	var units=['B','K','M','G','TB']; 
+	for(i=0;size>=1024&&i<4;i++){size/=1024;}
+	return Math.round(size,2)+' '+units[i];
+}
+
+
+function render_paste_files(items){
+	
+}
 $(function () {
 	init();
+
+	//先阻止默认事件
+	$(document).on({
+		dragleave:function(e){	  //拖离
+			e.preventDefault();
+		},
+		drop:function(e){		   //拖后放
+			e.preventDefault();
+		},
+		dragenter:function(e){	  //拖进
+			e.preventDefault();
+		},
+		dragover:function(e){	   //拖来拖去
+			e.preventDefault();
+		}
+	});
+
+	$('#upfile').on('change',function(e){
+		$('#uplist').html('<p class="clink">已选择('+e.target.files.length+')文件</p>')
+	})
+	$(document).on('click','#btn_file',function(){
+		$('#upfile').trigger('click');
+	}).on('drop','#dropdiv',function(e){
+		e.preventDefault();
+		var files = e.originalEvent.dataTransfer.files;
+		$('#upfile').prop('files',files);
+		$('#uplist').html('<p class="clink">已选择('+files.length+')文件</p>')
+	})/*.on('paste','#dropdiv',function(e){
+		e.preventDefault();
+		var cb=(e.clipboardData||e.originalEvent.clipboardData);
+		if(!cb.items){return;}
+		console.log(cb.items)
+		render_paste_files(cb.items);
+	});*/
 })
 
 
