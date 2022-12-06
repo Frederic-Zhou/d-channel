@@ -72,7 +72,7 @@ func Start(addr string) error {
 	router.POST("/newstream", newStreamHandler) //发送p2p消息
 
 	router.POST("/pubtopic", pubTopicHandler) //pubsub 发布topic
-	router.POST("/subtopic", subTopicHandler) //pubsub 订阅topic
+	router.GET("/subtopic", subTopicHandler)  //pubsub 订阅topic
 
 	router.GET("/index", indexHandler)
 	router.GET("/", indexHandler)
@@ -789,7 +789,7 @@ func newStreamHandler(c *gin.Context) {
 func subTopicHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	topic := c.DefaultPostForm("topic", "")
+	topic := c.DefaultQuery("topic", "")
 	if topic == "" {
 		c.JSON(http.StatusOK, ResponseJsonFormat(0, "need topic"))
 		return
@@ -812,9 +812,9 @@ func subTopicHandler(c *gin.Context) {
 			}
 
 			msgJsonByte, _ := json.Marshal(map[string]string{
-				"seq":  string(msg.Seq()),
-				"form": msg.From().String(),
-				"data": string(msg.Data()),
+				"seq":     string(msg.Seq()),
+				"form":    msg.From().String(),
+				"message": string(msg.Data()),
 			})
 
 			c.SSEvent("message", string(msgJsonByte))
