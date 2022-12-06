@@ -125,9 +125,9 @@
 							<label>附件：</label>
 							<input style="position:absolate;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
 							<div id="upfile_div" class="updiv rel">
+								<div class="dropdiv abs" id="dropdiv"><p class="tc abs m0" style="bottom:6px;left:0;right:0">或将文件拖放到此处</p><!--<br/>或粘贴(CTRL+V)图片或截图到这里--></div>
 								<a class="w3-btn w3-blue w3-small" id="btn_file" href="javascript:;">点此选择文件(多选)</a>
-								<div class="uplist" id="uplist"><p class="clink">未选择</p></div>
-								<div class="dropdiv abs" id="dropdiv">或将文件拖放到此处<!--<br/>或粘贴(CTRL+V)图片或截图到这里--></div>
+								<div class="uplist rel" id="uplist" style="text-align:left;z-index:3"><p class="clink">未选择</p></div>
 							</div>
 							<!--<input type="hidden" name="init" value="true" />-->
 						</div>
@@ -700,6 +700,16 @@ function publish_content(f) {
 	} else if (to0 == '@me') {
 		formdata.delete('to');
 		formdata.append('to','');
+	}else if (to0 == 'toother') {
+		if(!$('input[type=checkbox][name=to]:checked').length){
+			msgcry('请选择发送对象！')
+			return;
+		}
+	}
+	var bd=$.trim(f.body.value)
+	if(!bd){
+		msgcry('内容不得为空！')
+		return;
 	}
 	formdata.delete('to0');
 	//loading();
@@ -738,8 +748,13 @@ function formatBytes(size){
 }
 
 
-function render_paste_files(items){
-	
+function render_files(fs){
+	var s='';
+	for(var i=0;i<fs.length;i++){
+		var f=fs[i];
+		s+='<p class="clink">'+f.name+'('+formatBytes(f.size)+')</p>'
+	}
+	$('#uplist').html(s)
 }
 $(function () {
 	init();
@@ -761,7 +776,8 @@ $(function () {
 	});
 
 	$('#upfile').on('change',function(e){
-		$('#uplist').html('<p class="clink">已选择('+e.target.files.length+')文件</p>')
+		render_files(e.target.files)
+		//$('#uplist').html('<p class="clink">已选择('+e.target.files.length+')文件</p>')
 	})
 	$(document).on('click','#btn_file',function(){
 		$('#upfile').trigger('click');
@@ -769,7 +785,8 @@ $(function () {
 		e.preventDefault();
 		var files = e.originalEvent.dataTransfer.files;
 		$('#upfile').prop('files',files);
-		$('#uplist').html('<p class="clink">已选择('+files.length+')文件</p>')
+		render_files(files);
+		//$('#uplist').html('<p class="clink">已选择('+files.length+')文件</p>')
 	})/*.on('paste','#dropdiv',function(e){
 		e.preventDefault();
 		var cb=(e.clipboardData||e.originalEvent.clipboardData);
