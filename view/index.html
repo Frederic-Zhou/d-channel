@@ -15,7 +15,10 @@
 	<script type="text/javascript" src="/asset/js/jquery1.9.1.min.js"></script>
 
 </head>
-
+<style type="text/css" media="screen">
+.cbody{}
+.cbody img{max-width:100%}
+</style>
 <body id="app">
 	<div class="w3-panel w3-blue w3-card-4 mt0 p10">
 
@@ -144,7 +147,7 @@
 								<b>{%item.name%}: </b>
 								<span class="tm c666" i-if="{%item.tm%}">时间:{%item.tm%}</span>
 								<a class="clink" i-onclick="{%copy(item.url)%}" href="javascript:;">{%ecstr(item.url,8,6)%} <i title="copy" class="fa fa-copy"></i></a>
-								<div i-html="{%item.dt.body%}"></div>
+								<div class="cbody" i-html="{%item.dt.body%}"></div>
 							</div>
 							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
 							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
@@ -494,7 +497,7 @@ var iv = ice.view('#app', {
 			}
 			$.get(url+'post.json',function(res1){
 				if(!('body' in res1)){return}
-				res['body']=marked.parse(res1['body']);
+				res1['body']=marked.parse(res1['body'],{'baseUrl':url});
 				var tm=('createdAt' in res)?format_date(res['createdAt']):''
 				zs.postlist.push({ 'name': name,'url':url,'tm':tm, 'dt': res1, })
 			},'json')
