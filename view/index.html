@@ -491,14 +491,15 @@ var iv = ice.view('#app', {
 			if(dt=='started') return;
 			var v=JSON.parse(dt);
 			console.log(v)
-			listen_obj[v.name]=v;
+			zs.listen_obj[v.name]=v;
 			Dreamer.info('【'+v.name+'】有新文档更新！');
 			$('.new_msg[data-name='+v.name+']').html('new')
 		});
 	},
 	load_listen_ipfs:function(name){
-		if(!(name in listen_obj)) return;
-		load_ipfs(listen_obj[name]['latest'],name)
+		var zs = this;
+		if(!(name in zs.listen_obj)) return;
+		load_ipfs(zs.listen_obj[name]['latest'],name)
 		$('.new_msg[data-name='+name+']').html('')
 	},
 
