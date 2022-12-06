@@ -50,7 +50,7 @@
 					<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i title="unfollow" class="fa fa-bell-slash"></i></a>
-						<span class="new_msg" style="color:red" data-name="{%item.name%}"></span>
+						<a i-onclick="{%load_listen_ipfs(item.name)%}" class="new_msg" href="javascript:;" style="color:red" data-name="{%item.name%}"></a>
 					</li>
 				</ul>
 				<div class="w3-blue p5 mt10">节点列表</div>
@@ -444,6 +444,7 @@ var iv = ice.view('#app', {
 		if (!end_with(url, '/')) url = url + '/';
 		var zs = this;
 		zs.postlist = []
+		$('.new_msg[data-name='+name+']').html('')
 		$.ajax({
 			url: url,
 			success: function (res) {
@@ -479,15 +480,23 @@ var iv = ice.view('#app', {
 			}, 'json')
 		});
 	},
+
+	listen_obj:{},
 	listenfolloweds:function(){
 		var zs = this;
 		open_stream1('/listenfolloweds',function(dt){
 			if(dt=='started') return;
 			var v=JSON.parse(dt);
 			console.log(v)
+			listen_obj[v.name]=v;
 			Dreamer.info('【'+v.name+'】有新文档更新！');
 			$('.new_msg[data-name='+v.name+']').html('new')
 		});
+	},
+	load_listen_ipfs:function(name){
+		if(!(name in listen_obj)) return;
+		load_ipfs(listen_obj[name]['latest'],name)
+		$('.new_msg[data-name='+name+']').html('')
 	},
 
 	streamlist: [],
@@ -507,6 +516,9 @@ var iv = ice.view('#app', {
 		open_stream('/setstream',function (dt) {
 			zs.stream_msg(dt);
 		});
+		setTimeout(function(){
+			zs.stream_local()
+		},1200);
 	},
 	switch_stream: function (el) {
 		var zs = this;
@@ -520,10 +532,15 @@ var iv = ice.view('#app', {
 			close_stream()
 		}
 	},
-	stream_local: function () {
+	stream_local:function(){
+		var zs = this;
 		$.get('/getmessages', function (res) {
-			if (!res['code']) { alerterr(res['data']); return }
-			//zs.streamlist.push({'name':name,'url':url,'dt':res})
+			if (!res['code']){alerterr(res['data']); return }
+			$.each(res['data'],function(k,v){
+				if(v['body']=='started'){return true;}
+				var dt=JSON.parse(v['body']);
+				zs.streamlist.push({ 'from': dt.from,'to':zs.peerid,'pid':dt.from, 'message':dt.message })
+			});
 		}, 'json')
 	},
 	peernames_obj: {},
