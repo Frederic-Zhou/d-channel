@@ -112,17 +112,17 @@
 								</div>
 							</div>
 						</div>
-						<div class="w3-section">
+						<div class="w3-section dn">
 							<label>内容类型：</label>
-							<label><input type="radio" class="w3-radio" name="type" value="markdown">markdown</label>
-							<label><input type="radio" class="w3-radio" name="type" value="html" checked>html</label>
+							<label><input type="radio" class="w3-radio" name="type" value="markdown" checked>markdown</label>
+							<label><input type="radio" class="w3-radio" name="type" value="html">html</label>
 						</div>
 						<div class="w3-section">
 							<label>内容：</label>
 							<textarea class="w3-input" name="body"></textarea>
 						</div>
 						<div class="w3-section">
-							<label>附件上传：</label>
+							<label>附件：</label>
 							<input style="position:absolate;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
 							<div id="upfile_div" class="updiv rel">
 								<a class="w3-btn w3-blue w3-small" id="btn_file" href="javascript:;">点此选择文件(多选)</a>
@@ -151,7 +151,9 @@
 							</div>
 							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
 							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
-								<a i-for="{%item.dt.attachments%}" i-item="att" href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
+								<p i-for="{%item.dt.attachments%}" i-item="att" style="margin:0">
+								<a href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
+								</p>
 							</div>
 						</li>
 					</ul>
@@ -571,11 +573,17 @@ var iv = ice.view('#app', {
 		var zs = this;
 		$.get('/getmessages', function (res) {
 			if (!res['code']){alerterr(res['data']); return }
+			var arr=[]
 			$.each(res['data'],function(k,v){
 				if(v['body']=='started'){return true;}
 				var dt=JSON.parse(v['body']);
-				zs.streamlist.push({ 'from': dt.from,'to':zs.peerid,'pid':dt.from, 'message':dt.message })
+				arr.push({ 'from': dt.from,'to':zs.peerid,'pid':dt.from, 'message':dt.message })
 			});
+			var arr1=arr.reverse()
+			$.each(arr1,function(k,v){
+				zs.streamlist.push(v)
+			});
+			
 		}, 'json')
 	},
 	peernames_obj: {},
