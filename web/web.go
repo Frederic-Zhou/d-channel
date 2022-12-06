@@ -23,9 +23,9 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
-	nsopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/core"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gorm.io/gorm"
 )
 
@@ -77,7 +77,56 @@ func Start(addr string) error {
 	router.GET("/index", indexHandler)
 	router.GET("/", indexHandler)
 
+	router.GET("/test", testHandler)
+
 	return router.Run(addr)
+}
+
+func testHandler(c *gin.Context) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	connInfos, err := IpfsAPI.Swarm().Peers(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, ResponseJsonFormat(0, err.Error()))
+	}
+
+	result := []gin.H{}
+	for _, cf := range connInfos {
+
+		latency, latencyErr := cf.Latency()
+		protoIDs, streamsErr := cf.Streams()
+		result = append(result, gin.H{
+			"id":         cf.ID(),
+			"address":    cf.Address(),
+			"direction":  cf.Direction(),
+			"latency":    latency,
+			"latencyErr": latencyErr,
+			"protoIDs":   protoIDs,
+			"streamsErr": streamsErr,
+		})
+
+	}
+
+	addr1, err := peer.AddrInfoFromString("/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ")
+	if err != nil {
+		log.Println("addr1", err)
+	}
+	err = IpfsAPI.Swarm().Connect(ctx, *addr1)
+	if err != nil {
+		log.Println("conn1", err)
+	}
+
+	addr2, err := peer.AddrInfoFromString("/ip4/1.14.102.100/udp/4001/quic/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ")
+	if err != nil {
+		log.Println("addr2", err)
+	}
+	err = IpfsAPI.Swarm().Connect(ctx, *addr2)
+	if err != nil {
+		log.Println("conn2", err)
+	}
+
+	c.JSON(http.StatusOK, result)
+
 }
 
 // 解析ipns
@@ -253,7 +302,8 @@ func publishHandler(c *gin.Context) {
 	go func() {
 		nsEntry, err := IpfsAPI.Name().Publish(context.Background(), cid,
 			options.Name.Key(ipnskey.Name()),
-			options.Name.ValidTime(time.Hour*24))
+			// options.Name.ValidTime(time.Hour*24),
+		)
 
 		if err != nil {
 			log.Println("publish err", err)
@@ -545,19 +595,35 @@ func listenFollowedsHandler(c *gin.Context) {
 		defer close(chanStream)
 		for {
 			select {
-			case <-time.After(5 * time.Second):
+			case <-time.After(10 * time.Second):
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
 					path, err := IpfsAPI.Name().Resolve(ctx, a.NS,
-						options.Name.Cache(false),
-						options.Name.ResolveOption(nsopts.Depth(1)),
+						options.Name.Cache(true),
 					)
+
 					if err != nil {
+						log.Println("resolve follow err", err)
 						continue
 					}
+
+					log.Println("get follow path", a.Name, a.NS)
+
 					if a.Latest != path.String() {
+
+						//解析出来后，先pin 上
+						err = IpfsAPI.Pin().Add(ctx, path)
+						if err != nil {
+							log.Println("resovle pin err:", err)
+						}
+						log.Println("get new path and pin", a.Latest, path)
+
 						a.Latest = path.String()
-						a.Save()
+						err := a.Save()
+						if err != nil {
+							log.Println("save follow err", err)
+						}
+						log.Println("follow", a)
 
 						u, _ := json.Marshal(a)
 						chanStream <- string(u)
