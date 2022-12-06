@@ -56,9 +56,9 @@
 						<a i-onclick="{%load_listen_ipfs(item.name)%}" class="new_msg" href="javascript:;" style="color:red" data-name="{%item.name%}"></a>
 					</li>
 				</ul>
-				<div class="w3-blue p5 mt10">节点列表</div>
+				<div class="w3-blue p5 mt10">伙伴节点</div>
 				<ul class="w3-ul w3-border bk">
-					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增节点</a></li>
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增伙伴</a></li>
 					<li i-for="peerslist">
 						{%item.name%}:<a href="javascript:;" i-onclick="{%set_stream_id(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
