@@ -639,7 +639,7 @@ func listenFollowedsHandler(c *gin.Context) {
 		}
 	}(ctx, chanStream)
 
-	chanStream <- "started"
+	// chanStream <- "started"
 
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-chanStream; ok {
@@ -715,9 +715,8 @@ func setStreamHandler(c *gin.Context) {
 
 	var readchan = make(chan string, 10)
 
-	//设置只做一次
 	ipfsnode.SetStreamHandler(readchan)
-	readchan <- "started"
+	// readchan <- "started"
 	defer func() {
 		ipfsnode.RemoveStreamHandler()
 		close(readchan)
@@ -879,8 +878,9 @@ type post struct {
 
 // 元数据对象，这个对象中的内容将不加密
 type meta struct {
-	To   []string `json:"to" form:"to"`
-	Next string   `json:"next" form:"next"`
+	CreatedAt time.Time `json:"createdAt" form:"createdAt"`
+	To        []string  `json:"to" form:"to"`
+	Next      string    `json:"next" form:"next"`
 }
 
 // 列表查询常规参数
