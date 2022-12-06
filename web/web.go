@@ -737,7 +737,9 @@ func setStreamHandler(c *gin.Context) {
 
 			msgbody := map[string]string{}
 
-			_ = json.Unmarshal([]byte(msg), &msgbody)
+			if err = json.Unmarshal([]byte(msg), &msgbody); err == nil {
+				msgbody["msg"] = err.Error()
+			}
 
 			_ = beeep.Notify("message", msgbody["msg"], "")
 			return true
