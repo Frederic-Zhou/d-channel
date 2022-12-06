@@ -143,6 +143,7 @@
 							<div>
 								<b>{%item.name%}: </b>
 								<span class="tm c666" i-if="{%item.tm%}">时间:{%item.tm%}</span>
+								<a class="clink" i-onclick="{%copy(item.url)%}" href="javascript:;">{%ecstr(item.url,8,6)%} <i title="copy" class="fa fa-copy"></i></a>
 								<div i-html="{%item.dt.body%}"></div>
 							</div>
 							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
