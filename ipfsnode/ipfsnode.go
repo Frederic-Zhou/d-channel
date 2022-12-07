@@ -129,10 +129,10 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 	bootstrap := []string{
 		"/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ",
 		"/ip4/1.14.102.100/udp/4001/quic/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ"}
-	// if cfg.Bootstrap[0] != bootstrap[0] {
-	// 	cfg.Bootstrap = append(bootstrap, cfg.Bootstrap...)
-	// }
-	cfg.Bootstrap = bootstrap
+	if cfg.Bootstrap[0] != bootstrap[0] {
+		cfg.Bootstrap = append(bootstrap, cfg.Bootstrap...)
+	}
+	// cfg.Bootstrap = bootstrap
 
 	repo.SetConfig(cfg)
 
