@@ -166,7 +166,7 @@ func ipfsHandler(c *gin.Context) {
 		nd.Close()
 		if c.DefaultQuery("pin", "yes") != "no" {
 			log.Println("pin:", path.New(cid+fpath).String())
-			err = IpfsAPI.Pin().Add(c.Request.Context(), path.New(cid+fpath))
+			err = IpfsAPI.Pin().Add(context.Background(), path.New(cid+fpath))
 			if err != nil {
 				log.Println("pin err:", err)
 			}
@@ -601,7 +601,7 @@ func listenFollowedsHandler(c *gin.Context) {
 		defer close(chanStream)
 		for {
 			select {
-			case <-time.After(10 * time.Second):
+			case <-time.After(30 * time.Second):
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
 					path, err := IpfsAPI.Name().Resolve(c.Request.Context(), a.NS,
@@ -618,12 +618,14 @@ func listenFollowedsHandler(c *gin.Context) {
 					if a.Latest != path.String() {
 
 						//解析出来后，先pin 上
-						err = IpfsAPI.Pin().Add(c.Request.Context(), path)
-						if err != nil {
-							log.Println("resovle pin err:", err)
-							continue
-						}
-						log.Println("get new path and pin", a.Latest, path)
+						go func() {
+							err = IpfsAPI.Pin().Add(c.Request.Context(), path)
+							if err != nil {
+								log.Println("resovle pin err:", err)
+								return
+							}
+							log.Println("get new path and pin", a.Latest, path)
+						}()
 
 						a.Latest = path.String()
 						err := a.Save()
