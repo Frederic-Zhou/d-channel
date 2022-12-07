@@ -686,7 +686,7 @@ func setStreamHandler(c *gin.Context) {
 
 			msgbody := map[string]string{}
 
-			if err = json.Unmarshal([]byte(msg), &msgbody); err == nil {
+			if err = json.Unmarshal([]byte(msg), &msgbody); err != nil {
 				msgbody["msg"] = err.Error()
 			}
 
