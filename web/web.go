@@ -605,7 +605,7 @@ func listenFollowedsHandler(c *gin.Context) {
 				follows, _ := localstore.GetFollows(0, -1)
 				for _, a := range follows {
 					path, err := IpfsAPI.Name().Resolve(c.Request.Context(), a.NS,
-						options.Name.Cache(false),
+						options.Name.Cache(true),
 					)
 
 					if err != nil {
