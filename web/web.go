@@ -687,10 +687,10 @@ func setStreamHandler(c *gin.Context) {
 			msgbody := map[string]string{}
 
 			if err = json.Unmarshal([]byte(msg), &msgbody); err != nil {
-				msgbody["msg"] = err.Error()
+				msgbody["message"] = err.Error()
 			}
 
-			_ = beeep.Notify("message", msgbody["msg"], "./asset/favicon.ico")
+			_ = beeep.Notify("message", msgbody["message"], "./asset/favicon.ico")
 			return true
 		case <-c.Request.Context().Done():
 			return false
