@@ -60,7 +60,7 @@
 				<ul class="w3-ul w3-border bk">
 					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增伙伴</a></li>
 					<li i-for="peerslist">
-						{%item.name%}:<a href="javascript:;" i-onclick="{%set_stream_id(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
+						{%item.name%}:<a href="javascript:;" i-onclick="{%open_chat(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
 						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
 						&nbsp; <a i-onclick="{%set_stream_id(item.peerid)%}" href="javascript:;" class="clink"><i title="chat" class="fa fa-comments-o"></i></a>
 						&nbsp; <a i-onclick="{%set_publish_key(item.recipient)%}" href="javascript:;" class="clink" title="publish to him"><i class="fa fa-pencil-square-o"></i></a>
@@ -123,7 +123,7 @@
 						</div>
 						<div class="w3-section">
 							<label>附件：</label>
-							<input style="position:absolate;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
+							<input style="position:absolute;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
 							<div id="upfile_div" class="updiv rel">
 								<div class="dropdiv abs" id="dropdiv"><p class="tc abs m0" style="bottom:6px;left:0;right:0">或将文件拖放到此处</p><!--<br/>或粘贴(CTRL+V)图片或截图到这里--></div>
 								<a class="w3-btn w3-blue w3-small" id="btn_file" href="javascript:;">点此选择文件(多选)</a>
@@ -165,6 +165,32 @@
 
 
 
+
+<div i-for="peer_stream" class="dn chatdiv" id="chatdiv_{%index%}">
+	<div class="msgs rel">
+		<!--<div i-for="{%item.msgs%}" i-item="msg" i-if="{%msg.type=='recv'%}" class="msg fix {%msg.type%}">
+			<div class="tm">{%fmt_date(msg.tm)%}</div>
+			<div class="img">{%(item.name).substr(0,1).toUpperCase()%}</div>
+			<p class="bd">{%msg.message%}</p>
+		</div>
+		<div i-for="{%item.msgs%}" i-item="msg" i-if="{%msg.type=='send'%}" class="msg fix {%msg.type%}">
+			<div class="tm">{%fmt_date(msg.tm)%}</div>
+			<div class="img">我</div><span class="nm">我</span>
+			<p class="bd">{%msg.message%}</p>
+		</div>-->
+		
+	</div>
+	<div style="height:80px;"></div>
+	<div class="msg_foot">
+		<form onsubmit="return false;" i-onsubmit="newstream">
+			<input type="hidden" name="peerid" value="{%item.peerid%}"/>
+			<input class="my-input" type="text" name="body" value="" />
+			<button type="submit" class="send w3-blue">发送</button>
+		</form>
+	</div>
+</div>
+
+
 </body>
 
 
@@ -186,28 +212,14 @@
 </div>
 
 
-<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;position:fixed;top:0;" readonly></textarea>
+<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;position:fixed;top:0;z-index:-1;" readonly></textarea>
 <div style="height:50px">&nbsp;</div>
 
 
-<!--<div class="msgs">
-	<div class="msg fix recv">
-		<div class="img">张</div><span class="nm">这是昵称</span>
-		<p class="bd">这是受到的消息内容</p>
-	</div>
-	<div class="msg fix send">
-		<div class="img">李</div><span class="nm">我的昵称</span>
-		<p class="bd">这是发送消息内容</p>
-	</div>
-	<div class="msg fix recv">
-		<div class="img">张</div><span class="nm">这是昵称</span>
-		<p class="bd">这是受到的这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容这是受到的消息内容消息内容</p>
-	</div>
-	<div class="msg fix recv">
-		<div class="img">张</div><span class="nm">这是昵称</span>
-		<p class="bd">这是受到的消息内容</p>
-	</div>
-</div>-->
+<style type="text/css" media="screen">
+.layui-layer-page .layui-layer-content{overflow:hidden;}
+</style>
+
 
 
 <script type="text/javascript" src="/asset/layer/layer.js"></script>
@@ -320,6 +332,31 @@ function format_date(dtstr){
 	var dt=new Date(dtstr)
 	return z2(dt.getMonth()+1)+'-'+z2(dt.getDate())+' '+z2(dt.getHours())+':'+z2(dt.getMinutes())+':'+z2(dt.getSeconds());
 }
+function dlg_chat(el,title){
+	return layer.open({
+		'type':1,shade:0,shadeClose:false,id:'dlg_'+el.replace('#',''),isOutAnim:false,maxmin:true,
+		area:['420px','800px'],
+		title:title,
+		content:$(el)
+	});
+}
+function add_msg(el,dt){
+	var html=''
+	if(dt.type=='send'){
+		html=`<div class="msg fix send">
+			<div class="tm">`+format_date(dt.tm)+`</div>
+			<div class="img">我</div><span class="nm">我</span>
+			<p class="bd">`+dt.message+`</p>
+		</div>`
+	}else{
+		html=`<div class="msg fix recv">
+			<div class="tm">`+format_date(dt.tm)+`</div>
+			<div class="img">`+(dt.name).substr(0,1).toUpperCase()+`</div>
+			<p class="bd">`+dt.message+`</p>
+		</div>`
+	}
+	$(el+' .msgs').append(html);
+}
 
 var iv = ice.view('#app', {
 	followed_ns: [],
@@ -327,6 +364,7 @@ var iv = ice.view('#app', {
 	error_ipns_list: [],
 	p2p_on: [],
 	peerid: '', recipient: '',
+	test:{'aa':1,'bb':2},
 	ecstr: function (v, l1, l2) {
 		return left(v, l1) + '...' + right(v, l2);
 	},
@@ -422,11 +460,34 @@ var iv = ice.view('#app', {
 			})
 		}, 'json');
 	},
+
+	peer_stream:[],//每个peer的聊天记录
+	peernames_obj: {},
+	peername: function (pid) {
+		var zs = this, nm = '';
+		if (zs.peernames_obj[pid]!=undefined) return zs.peernames_obj[pid];
+		if (pid == zs.peerid) return '我';
+		$.each(zs.peerslist, function (k, v) {
+			if (v['peerid'] == pid) {
+				zs.peernames_obj[pid] = v.name;
+				nm = v.name;
+				return false;
+			}
+		});
+		if(nm=='') return '我';
+		return nm;
+	},
 	getpeers: function () {
 		var zs = this;
 		$.get('/getpeers', function (res) {
 			if (!res['code']) { alerterr(res['data']); return }
-			zs.peerslist = res['data']
+			zs.peerslist = res['data'];
+			$.each(res['data'],function(k,v){
+				//zs.peer_stream[v.peerid]={'name':v['name'],msgs:[]};
+				//zs.peer_stream[v.peerid]=[];
+				zs.peer_stream.push({'name':v.name,'peerid':v.peerid,'msgs':[]})
+				zs.peernames_obj[v.peerid]=v['name'];
+			})
 		}, 'json')
 	},
 	add_peer: function (name, recipient, peerid) {
@@ -470,6 +531,7 @@ var iv = ice.view('#app', {
 		$('.new_msg[data-name='+name+']').html('')
 		$.ajax({
 			url: url,
+			cache:false,
 			success: function (res) {
 				if (!res['code']) { alerterr(res['data']); return }
 				zs.load_ipfs(res['data']['path'], name);
@@ -504,17 +566,6 @@ var iv = ice.view('#app', {
 				zs.postlist.push({ 'name': name,'url':url,'tm':tm, 'dt': res1, })
 			},'json')
 		}, 'json')
-		/*$.get(url + 'post.json', function (res) {
-			if(!('body' in res)){return}
-			res['body']=marked.parse(res['body']);
-			zs.postlist.push({ 'name': name, 'url': url, 'dt': res })
-		}, 'json').then(function () {
-			$.get(url + 'meta.json', function (res) {
-				if (res['next']) {
-					zs.load_ipfs(res['next'], name);
-				}
-			}, 'json')
-		});*/
 	},
 
 	listen_obj:{},
@@ -540,12 +591,34 @@ var iv = ice.view('#app', {
 	stream_on: true,
 	stream_users: [],
 	stream_1: true,
+	
+	open_chat:function(pid){
+		var zs=this;
+		$.each(zs.peer_stream,function(kk,vv){
+			if(vv['peerid']==pid){
+				dlg_chat('#chatdiv_'+kk,'与('+vv.name+')聊天中')
+				return false;
+			}
+		})
+	},
 	stream_msg:function(dt){
 		if (dt == 'started') return;
+		var zs=this;
 		var v = JSON.parse(dt);
-		v['to']=this.peerid;
-		v['pid']=v.from;
-		this.streamlist.push(v)
+		if(!('to' in v)) v['to']=zs.peerid;
+		if(!('pid' in v)) v['pid']=v.from;
+		if(!('tm' in v)) v['tm']=format_date(new Date());
+		v['name']=zs.peername(v.pid),
+		zs.streamlist.push(v)
+		//this.peer_stream[v.from]['msgs'].push({'message':v.message})
+		//this.peer_stream[v.from].push(v)
+		$.each(zs.peer_stream,function(kk,vv){
+			if(vv['peerid']==v.from||vv['peerid']==v.to){
+				zs.peer_stream[kk]['msgs'].push(v)
+				add_msg('#chatdiv_'+kk,v)
+				return false;
+			}
+		});
 		$('#chatlist').get(0).scrollTop=99999;
 	},
 	stream_start: function () {
@@ -577,41 +650,32 @@ var iv = ice.view('#app', {
 			$.each(res['data'],function(k,v){
 				if(v['body']=='started'){return true;}
 				var dt=JSON.parse(v['body']);
-				arr.push({ 'from': dt.from,'to':zs.peerid,'pid':dt.from, 'message':dt.message })
+				dt['tm']=v['UpdatedAt'];
+				dt['type']='recv';
+				arr.push(JSON.stringify(dt))
 			});
 			var arr1=arr.reverse()
 			$.each(arr1,function(k,v){
-				zs.streamlist.push(v)
+				zs.stream_msg(v);
+				//zs.streamlist.push(v)
 			});
 			
 		}, 'json')
 	},
-	peernames_obj: {},
-	peername: function (pid) {
-		var zs = this, nm = '';
-		if (pid == zs.peerid) return '我';
-		if (pid in zs.peernames_obj) return zs.peernames_obj[pid];
-		$.each(zs.peerslist, function (k, v) {
-			if (v['peerid'] == pid) {
-				zs.peernames_obj[pid] = v.name;
-				nm = v.name;
-				return false;
-			}
-		});
-		return nm;
-	},
+	
 	newstream: function (el) {
 		if (!this.stream_on) { msgerr('点对点未开启'); return; }
 		var zs = this;
 		btn_load('#btn_stream', '发送中');
-		var dt = { 'peerid': el.peerid.value, 'body': el.body.value };
+		var topid=el.peerid.value;
+		var dt = { 'peerid': topid, 'body': el.body.value };
 		$.post('/newstream', dt, function (res) {
 			btn_ok('#btn_stream', '发送');
 			if (!res['code']) { alerterr(res['data']); return }
-			zs.streamlist.push({ 'from': zs.peerid,'to':el.peerid.value,'pid':el.peerid.value, 'message': el.body.value })
+			var dd={ 'from': zs.peerid,'to':topid,'pid':topid,'message': el.body.value,'type':'send',tm:format_date(new Date()) }
+			zs.stream_msg(JSON.stringify(dd));
 			el.peerid.value = '';
 			el.body.value = '';
-			$('#chatlist').get(0).scrollTop=99999;
 		})
 	},
 	set_stream_id:function(pid){

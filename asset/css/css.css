@@ -249,16 +249,21 @@ div.dib{*display:inline;*zoom:1;}
 li{list-style:none;}
 
 /*chat msgs*/
-.msgs{background-color:#f1f1f1;padding:15px}
-.msgs .msg{padding-bottom:14px;margin-bottom:14px;position:relative;}
+.msgs{background-color:#f1f1f1;padding:15px;max-height:720px;overflow:auto;}
+.msgs .msg{padding-bottom:14px;margin-bottom:14px;margin-top:10px;position:relative;}
 .msgs .msg .img{float:left;width:60px;height:60px;line-height:60px;text-align:center;font-size:24px;border-radius:50%;color:#fff;background-color:#3399CC;}
 .msgs .msg .nm{color:#999;font-size:15px;position:absolute;top:-8px;left:70px;}
 .msgs .msg .bd{float:left;margin:0 12px;padding:10px;background:#fff;font-size:18px;position:relative;border-radius:12px;box-sizing:border-box;word-wrap:break-word;top:16px}
+.msgs .msg .tm{text-align:center;color:#999}
 .msgs .recv{}
 .msgs .send{}
 .msgs .send .img{float:right;background-color:#FF9933;}
 .msgs .send .nm{right:70px;left:auto}
 .msgs .send .bd{left:auto;float:right}
+.chatdiv{overflow:hidden;}
+.msg_foot{position:absolute;bottom:0;left:0;right:0;height:80px;background-color:#fff;line-height:80px;width:inherit;border-top:1px solid #ddd;}
+.msg_foot .my-input{margin-left:12px;width:calc(100% - 84px);height:64px;border-radius:12px;border:1px solid #ddd;padding:0 12px;}
+.msg_foot .send{width:50px;height:56px;font-size:0.3rem;line-height:56px;text-align:center;border-radius:8px;float:right;margin-top:12px;margin-right:12px;border:0}
 
 /*上传界面*/
 .updiv{display:inline-block;text-align:center;z-index:0;border:2px dashed #ddd;background-color: #f9f9f9;padding:18px;min-height:120px;min-width:240px}
