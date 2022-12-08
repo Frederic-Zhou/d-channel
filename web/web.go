@@ -124,6 +124,16 @@ func testHandler(c *gin.Context) {
 		log.Println("conn2", err)
 	}
 
+	addr3, err := peer.AddrInfoFromString("/ip4/111.121.118.69/tcp/19537/p2p/12D3KooWRQbk9g8JcTYRcgXZQCngxnQmmNuv1DUxPN1D7oP5ByAy")
+	if err != nil {
+		log.Println("addr3", err)
+	}
+	err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr3)
+	if err != nil {
+		log.Println("conn3", err)
+	}
+	///ip4/111.121.118.69/tcp/19537/p2p/12D3KooWRQbk9g8JcTYRcgXZQCngxnQmmNuv1DUxPN1D7oP5ByAy
+
 	c.JSON(http.StatusOK, result)
 
 }

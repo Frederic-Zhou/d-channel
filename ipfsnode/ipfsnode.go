@@ -125,6 +125,8 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 	cfg.Swarm.RelayClient.Enabled = config.True
 	cfg.Swarm.RelayService.Enabled = config.Default
 	cfg.Pubsub.Enabled = config.True
+	// cfg.AutoNAT.ServiceMode = config.AutoNATServiceUnset
+	cfg.Swarm.EnableHolePunching = config.True
 
 	bootstrap := []string{
 		"/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ",
