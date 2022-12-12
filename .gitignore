@@ -1,4 +1,5 @@
 repo
+orbitdb
 *.exe
 localstore.db
 secretkeys.key

@@ -8,6 +8,8 @@ require (
 )
 
 require (
+	berty.tech/go-ipfs-log v1.9.0 // indirect
+	github.com/btcsuite/btcd v0.22.1 // indirect
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
@@ -35,6 +37,7 @@ require (
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
+	berty.tech/go-orbit-db v1.19.1
 	filippo.io/age v1.0.0
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
@@ -113,7 +116,7 @@ require (
 	github.com/ipfs/go-ipfs-provider v0.7.1 // indirect
 	github.com/ipfs/go-ipfs-routing v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
-	github.com/ipfs/go-ipld-cbor v0.0.5 // indirect
+	github.com/ipfs/go-ipld-cbor v0.0.6 // indirect
 	github.com/ipfs/go-ipld-format v0.4.0 // indirect
 	github.com/ipfs/go-ipld-git v0.1.1 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
@@ -147,7 +150,7 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.7.0 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.18.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
-	github.com/libp2p/go-libp2p-pubsub v0.6.1 // indirect
+	github.com/libp2p/go-libp2p-pubsub v0.8.1 // indirect
 	github.com/libp2p/go-libp2p-pubsub-router v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.4.0 // indirect
@@ -208,7 +211,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.opentelemetry.io/otel v1.7.0 // indirect
+	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.7.0 // indirect
@@ -217,7 +220,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.7.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.7.0 // indirect
-	go.opentelemetry.io/otel/trace v1.7.0 // indirect
+	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.16.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.14.1 // indirect
