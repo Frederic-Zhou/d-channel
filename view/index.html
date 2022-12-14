@@ -18,6 +18,12 @@
 <style type="text/css" media="screen">
 .cbody{}
 .cbody img{max-width:100%}
+
+.msg_foot{height:60px;line-height:60px}
+.msg_foot .my-input{height:42px;}
+.msg_foot .send{height:42px;line-height:42px;font-size:16px;margin-top:6px;margin-right:6px;}
+.msgs .msg .img{height:50px;width:50px;line-height:50px;}
+.msgs .msg .bd{font-size:16px;}
 </style>
 <body id="app">
 	<div class="w3-panel w3-blue w3-card-4 mt0 p10">
@@ -167,7 +173,7 @@
 
 
 <div i-for="peer_stream" class="dn chatdiv" id="chatdiv_{%index%}">
-	<div class="msgs rel">
+	<div class="msgs rel" chat_peerid="{%item.peerid%}">
 		<!--<div i-for="{%item.msgs%}" i-item="msg" i-if="{%msg.type=='recv'%}" class="msg fix {%msg.type%}">
 			<div class="tm">{%fmt_date(msg.tm)%}</div>
 			<div class="img">{%(item.name).substr(0,1).toUpperCase()%}</div>
@@ -180,7 +186,7 @@
 		</div>-->
 		
 	</div>
-	<div style="height:80px;"></div>
+	<div style="height:60px;"></div>
 	<div class="msg_foot">
 		<form onsubmit="return false;" i-onsubmit="newstream">
 			<input type="hidden" name="peerid" value="{%item.peerid%}"/>
@@ -340,9 +346,9 @@ function dlg_chat(el,title){
 		content:$(el),
 		success:function(dom,idx){
 			var hh=$(dom).height();
-			var h1=hh-(50+80)
+			var h1=hh-(50+60)
 			//console.log(hh,h1)
-			$('.msgs').css('max-height',h1+'px')
+			$('.msgs').css('max-height',h1+'px').scrollTop(999999);
 		}
 	});
 }
@@ -625,7 +631,8 @@ var iv = ice.view('#app', {
 				return false;
 			}
 		});
-		$('#chatlist').get(0).scrollTop=99999;
+		$('#chatlist').scrollTop(999999);
+		$('[chat_peerid='+v.from+']').scrollTop(999999);
 	},
 	stream_start: function () {
 		var zs = this;
