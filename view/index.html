@@ -674,7 +674,7 @@ var iv = ice.view('#app', {
 			if (!res['code']) { alerterr(res['data']); return }
 			var dd={ 'from': zs.peerid,'to':topid,'pid':topid,'message': el.body.value,'type':'send',tm:format_date(new Date()) }
 			zs.stream_msg(JSON.stringify(dd));
-			el.peerid.value = '';
+			//el.peerid.value = '';
 			el.body.value = '';
 		})
 	},
