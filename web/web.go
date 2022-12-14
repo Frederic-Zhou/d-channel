@@ -106,33 +106,23 @@ func testHandler(c *gin.Context) {
 
 	}
 
-	addr1, err := peer.AddrInfoFromString("/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ")
-	if err != nil {
-		log.Println("addr1", err)
-	}
-	err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr1)
-	if err != nil {
-		log.Println("conn1", err)
-	}
-
-	addr2, err := peer.AddrInfoFromString("/ip4/1.14.102.100/udp/4001/quic/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ")
-	if err != nil {
-		log.Println("addr2", err)
-	}
-	err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr2)
-	if err != nil {
-		log.Println("conn2", err)
-	}
-
-	// addr3, err := peer.AddrInfoFromString("/ip4/111.121.118.69/tcp/19537/p2p/12D3KooWRQbk9g8JcTYRcgXZQCngxnQmmNuv1DUxPN1D7oP5ByAy")
+	// addr1, err := peer.AddrInfoFromString("/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ")
 	// if err != nil {
-	// 	log.Println("addr3", err)
+	// 	log.Println("addr1", err)
 	// }
-	// err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr3)
+	// err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr1)
 	// if err != nil {
-	// 	log.Println("conn3", err)
+	// 	log.Println("conn1", err)
 	// }
-	///ip4/111.121.118.69/tcp/19537/p2p/12D3KooWRQbk9g8JcTYRcgXZQCngxnQmmNuv1DUxPN1D7oP5ByAy
+
+	// addr2, err := peer.AddrInfoFromString("/ip4/1.14.59.205/udp/4001/quic/p2p/12D3KooWEdH6J2sDWKvQbgyYF9RR5JsG2JsWCNxkqwgXQ9mQy7r7")
+	// if err != nil {
+	// 	log.Println("addr2", err)
+	// }
+	// err = IpfsAPI.Swarm().Connect(c.Request.Context(), *addr2)
+	// if err != nil {
+	// 	log.Println("conn2", err)
+	// }
 
 	c.JSON(http.StatusOK, result)
 
