@@ -335,9 +335,15 @@ function format_date(dtstr){
 function dlg_chat(el,title){
 	return layer.open({
 		'type':1,shade:0,shadeClose:false,id:'dlg_'+el.replace('#',''),isOutAnim:false,maxmin:true,
-		area:['420px','800px'],
+		area:['330px','66%'],
 		title:title,
-		content:$(el)
+		content:$(el),
+		success:function(dom,idx){
+			var hh=$(dom).height();
+			var h1=hh-(50+80)
+			//console.log(hh,h1)
+			$('.msgs').css('max-height',h1+'px')
+		}
 	});
 }
 function add_msg(el,dt){
