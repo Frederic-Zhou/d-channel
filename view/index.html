@@ -356,7 +356,7 @@ function add_msg(el,dt){
 	var html=''
 	if(dt.type=='send'){
 		html=`<div class="msg fix send">
-			<div class="tm">`+format_date(dt.tm)+`</div>
+			<div class="tm">`+dt.tm+`</div>
 			<div class="img">我</div><span class="nm">我</span>
 			<p class="bd">`+dt.message+`</p>
 		</div>`
