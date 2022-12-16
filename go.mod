@@ -4,17 +4,14 @@ go 1.18
 
 require (
 	github.com/ipfs/interface-go-ipfs-core v0.8.1
-	github.com/ipfs/kubo v0.18.0-rc1
+	github.com/ipfs/kubo v0.17.0
 )
 
 require (
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4 // indirect
 	github.com/google/pprof v0.0.0-20221203041831-ce31453925ec // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/ipfs/go-libipfs v0.0.0-20221208220359-356ce09dd4a1 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo/v2 v2.5.1 // indirect
-	github.com/samber/lo v1.36.0 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
 )
 
