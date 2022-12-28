@@ -117,10 +117,14 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 	cfg.Pubsub.Enabled = config.True
 
 	bootstrap := []string{
-		"/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ",
-		"/ip4/1.14.102.100/udp/4001/quic/p2p/12D3KooWBBbdgzJBLUUFhMpA9JucE932wJNt2d6QZrGgSmPvTtPZ",
-		"/ip4/1.14.59.205/tcp/4001/p2p/12D3KooWCjiGPnmxpsZnH1Zv2DzHJ5ReigdJhCsbnvB2ZXdjQrvz",
-		"/ip4/1.14.59.205/udp/4001/quic/p2p/12D3KooWCjiGPnmxpsZnH1Zv2DzHJ5ReigdJhCsbnvB2ZXdjQrvz",
+		"/ip4/1.14.102.100/tcp/4001/p2p/12D3KooWCKmcrzYVrGpJRMoYf2GDQ4ZrKaBdiUFfBMtHvoSbmKx3",
+		"/ip4/1.14.102.100/udp/4001/quic/p2p/12D3KooWCKmcrzYVrGpJRMoYf2GDQ4ZrKaBdiUFfBMtHvoSbmKx3",
+		"/ip4/1.14.59.205/tcp/4001/p2p/12D3KooWDKeanBAYzF8qv3kx7UuRmqp5VzhFHTWfEqq8ADtwdySs",
+		"/ip4/1.14.59.205/udp/4001/quic/p2p/12D3KooWDKeanBAYzF8qv3kx7UuRmqp5VzhFHTWfEqq8ADtwdySs",
+		"/ip4/162.14.107.130/tcp/4001/p2p/12D3KooWNN3b5XnoDvmPKjHrvBdw38o5GbMSrPgEV3PCzmCMsHUa",
+		"/ip4/162.14.107.130/udp/4001/quic/p2p/12D3KooWNN3b5XnoDvmPKjHrvBdw38o5GbMSrPgEV3PCzmCMsHUa",
+		"/ip4/162.14.107.143/tcp/4001/p2p/12D3KooWRzcppb7h5doeNqJrF9q6dTnJhWGX5TAXJhvcWuqAwDBm",
+		"/ip4/162.14.107.143/udp/4001/quic/p2p/12D3KooWRzcppb7h5doeNqJrF9q6dTnJhWGX5TAXJhvcWuqAwDBm",
 	}
 
 	cfg.Bootstrap = bootstrap
