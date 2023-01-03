@@ -165,6 +165,11 @@ func Spawn(ctx context.Context, repoPath string) (icore.CoreAPI, *core.IpfsNode,
 		return nil, nil, fmt.Errorf("failed to create repo: %s", err)
 	}
 
+	err = setSwarmKey(repoPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create swarm.key: %s", err)
+	}
+
 	node, err := createNode(ctx, repoPath)
 	if err != nil {
 		return nil, nil, err
@@ -173,6 +178,24 @@ func Spawn(ctx context.Context, repoPath string) (icore.CoreAPI, *core.IpfsNode,
 	api, err := coreapi.NewCoreAPI(node)
 
 	return api, node, err
+}
+
+func setSwarmKey(repoPath string) (err error) {
+
+	keystring := `/key/swarm/psk/1.0.0/
+/base16/
+c375f09632ead0513cd8e5d8ede7c0bcc7bdfba1a3c2bd597bee8ebcfcecf05e`
+
+	var f *os.File
+	path := filepath.Join(repoPath, "swarm.key")
+	f, err = os.Create(path)
+	if os.IsExist(err) {
+		return nil
+	}
+	defer f.Close()
+	_, err = f.WriteString(keystring)
+	return
+
 }
 
 // ------- P2P listener
