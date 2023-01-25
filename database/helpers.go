@@ -6,7 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	files "github.com/ipfs/go-ipfs-files"
+	// files "github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-libipfs/files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"

@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	berty.tech/go-orbit-db v1.19.1
-	github.com/ipfs/go-ipfs-config v0.19.0
+	github.com/ipfs/go-libipfs v0.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/ipfs/kubo v0.17.0
 	github.com/mitchellh/mapstructure v1.5.0
@@ -15,7 +15,6 @@ require (
 	berty.tech/go-ipfs-log v1.9.0 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect
 	github.com/libp2p/go-libp2p-blankhost v0.3.0 // indirect
-	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/tidwall/btree v1.1.0 // indirect
 	github.com/tidwall/buntdb v1.2.9 // indirect
 	github.com/tidwall/gjson v1.14.0 // indirect
@@ -32,7 +31,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libp2p/go-libp2p v0.23.4
-	github.com/multiformats/go-multiaddr v0.7.0 // indirect
+	github.com/multiformats/go-multiaddr v0.8.0 // indirect
 )
 
 require (
@@ -104,7 +103,7 @@ require (
 	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
 	github.com/ipfs/go-ipfs-exchange-interface v0.2.0 // indirect
 	github.com/ipfs/go-ipfs-exchange-offline v0.3.0 // indirect
-	github.com/ipfs/go-ipfs-files v0.2.0
+	github.com/ipfs/go-ipfs-files v0.2.0 // indirect
 	github.com/ipfs/go-ipfs-keystore v0.0.2 // indirect
 	github.com/ipfs/go-ipfs-pinner v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
