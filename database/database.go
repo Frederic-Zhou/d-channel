@@ -23,6 +23,7 @@ import (
 const (
 	DEFAULT_PATH = "dafault"
 	PROGRAMSDB   = "self.programs"
+	ORBITDIR     = ".orbitdb"
 )
 
 type Instance struct {
@@ -42,6 +43,7 @@ type Instance struct {
 func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, err error) {
 
 	ins = new(Instance)
+
 	if repoPath == DEFAULT_PATH {
 		repoPath, err = config.PathRoot()
 		if err != nil {
@@ -54,8 +56,7 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 		if err != nil {
 			return
 		}
-
-		dbpath = filepath.Join(dbpath, "orbitdb")
+		dbpath = filepath.Join(dbpath, ORBITDIR)
 	}
 
 	ins.Dir = dbpath
@@ -111,7 +112,7 @@ func (ins *Instance) CreateDB(name, storetype string, accesseIDs []string) (db i
 		return
 	}
 
-	_, err = ins.Programs.Put(ins.ctx, db.Address().String(), dbinfo)
+	_, err = ins.Programs.Put(ins.ctx, name, dbinfo)
 
 	return
 }
@@ -132,7 +133,18 @@ func (ins *Instance) AddDB(address string) (db iface.Store, err error) {
 	if err != nil {
 		return
 	}
-	_, err = ins.Programs.Put(ins.ctx, address, []byte{})
+
+	dbinfo, err := json.Marshal(DBInfo{
+		Name:    db.DBName(),
+		Type:    db.Type(),
+		Address: db.Address().String(),
+		AddedAt: time.Now().String(),
+	})
+	if err != nil {
+		return
+	}
+
+	_, err = ins.Programs.Put(ins.ctx, address, dbinfo)
 
 	return
 }
