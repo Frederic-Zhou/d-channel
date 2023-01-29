@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -23,7 +24,7 @@ import (
 const (
 	DEFAULT_PATH = "dafault"
 	PROGRAMSDB   = "self.programs"
-	ORBITDIR     = ".orbitdb"
+	ORBITDIR     = "orbitdb"
 )
 
 type Instance struct {
@@ -43,6 +44,7 @@ type Instance struct {
 func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, err error) {
 
 	ins = new(Instance)
+	ins.ctx = ctx
 
 	if repoPath == DEFAULT_PATH {
 		repoPath, err = config.PathRoot()
@@ -78,8 +80,8 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 		return
 	}
 
-	_, err = ins.GetProgramsDB()
-
+	programs, err := ins.GetProgramsDB()
+	log.Println("programs:", programs)
 	return
 }
 
@@ -158,13 +160,8 @@ func (ins *Instance) GetOwnID() string {
 	return ins.OrbitDB.Identity().ID
 }
 
-func (ins *Instance) GetOwnPubKey() crypto.PubKey {
-	pubKey, err := ins.OrbitDB.Identity().GetPublicKey()
-	if err != nil {
-		return nil
-	}
-
-	return pubKey
+func (ins *Instance) GetOwnPubKey() (pubKey crypto.PubKey, err error) {
+	return ins.OrbitDB.Identity().GetPublicKey()
 }
 
 func (ins *Instance) Close() {
@@ -172,8 +169,11 @@ func (ins *Instance) Close() {
 }
 
 func (ins *Instance) GetProgramsDB() (program map[string][]byte, err error) {
+	localonly := true //programs 不在网络同步
 	if ins.Programs == nil && ins.OrbitDB != nil {
-		ins.Programs, err = ins.OrbitDB.KeyValue(ins.ctx, PROGRAMSDB, &orbitdb.CreateDBOptions{})
+		ins.Programs, err = ins.OrbitDB.KeyValue(ins.ctx, PROGRAMSDB, &orbitdb.CreateDBOptions{
+			LocalOnly: &localonly,
+		})
 		if err != nil {
 			return
 		}
