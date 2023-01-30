@@ -25,7 +25,13 @@ const (
 	DEFAULT_PATH = "dafault"
 	PROGRAMSDB   = "self.programs"
 	ORBITDIR     = "orbitdb"
+
+	KV   StoreType = "keyvalue"
+	DOCS StoreType = "docstore"
+	LOG  StoreType = "eventlog"
 )
+
+type StoreType string
 
 type Instance struct {
 	ctx context.Context
@@ -85,7 +91,7 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 	return
 }
 
-func (ins *Instance) CreateDB(name, storetype string, accesseIDs []string) (db iface.Store, err error) {
+func (ins *Instance) CreateDB(name string, storetype StoreType, accesseIDs []string) (db iface.Store, err error) {
 
 	if name == PROGRAMSDB {
 		err = fmt.Errorf("name can not be '%s'", PROGRAMSDB)
@@ -97,7 +103,7 @@ func (ins *Instance) CreateDB(name, storetype string, accesseIDs []string) (db i
 		},
 	}
 
-	db, err = ins.OrbitDB.Create(ins.ctx, name, storetype, &orbitdb.CreateDBOptions{
+	db, err = ins.OrbitDB.Create(ins.ctx, name, string(storetype), &orbitdb.CreateDBOptions{
 		AccessController: ac,
 	})
 	if err != nil {
@@ -105,8 +111,8 @@ func (ins *Instance) CreateDB(name, storetype string, accesseIDs []string) (db i
 	}
 
 	dbinfo, err := json.Marshal(DBInfo{
-		Name:    name,
-		Type:    storetype,
+		Name:    db.DBName(),
+		Type:    db.Type(),
 		Address: db.Address().String(),
 		AddedAt: time.Now().String(),
 	})
@@ -119,7 +125,7 @@ func (ins *Instance) CreateDB(name, storetype string, accesseIDs []string) (db i
 	return
 }
 
-func (ins *Instance) GetDB(address string) (db iface.Store, err error) {
+func (ins *Instance) OpenDB(address string) (db iface.Store, err error) {
 
 	db, err = ins.OrbitDB.Open(ins.ctx, address, &orbitdb.CreateDBOptions{})
 	if err != nil {
@@ -131,7 +137,7 @@ func (ins *Instance) GetDB(address string) (db iface.Store, err error) {
 
 func (ins *Instance) AddDB(address string) (db iface.Store, err error) {
 
-	db, err = ins.GetDB(address)
+	db, err = ins.OpenDB(address)
 	if err != nil {
 		return
 	}

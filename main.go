@@ -4,6 +4,7 @@ import (
 	"context"
 	"d-channel/database"
 	"log"
+	"time"
 )
 
 func main() {
@@ -25,6 +26,25 @@ func main() {
 	for i, v := range peers {
 		log.Println(i, v.Address())
 	}
+
+	o, e := ins.Programs.Put(context.TODO(), "hello", []byte("world"))
+
+	if e != nil {
+		log.Println(e)
+		return
+	}
+
+	log.Println(o)
+
+	v, e := ins.Programs.Get(context.TODO(), "hello")
+	if e != nil {
+		log.Println(e)
+		return
+	}
+
+	log.Println(string(v))
+
+	time.Sleep(20 * time.Second)
 
 	ins.Close()
 
