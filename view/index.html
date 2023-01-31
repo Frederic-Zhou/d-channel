@@ -1,0 +1,881 @@
+{{define "index"}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<title>D-Channel</title>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta name="renderer" content="webkit" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+	<link rel="stylesheet" href="/asset/css/w3.css" />
+	<link rel="stylesheet" href="/asset/css/css.css" />
+	<link rel="shortcut icon" href="/asset/favicon.ico">
+	<link href="/asset/fontawesome/css/font-awesome.min.css" rel="stylesheet">
+	<script type="text/javascript" src="/asset/js/jquery1.9.1.min.js"></script>
+
+</head>
+<style type="text/css" media="screen">
+.cbody{}
+.cbody img{max-width:100%}
+
+.msg_foot{height:60px;line-height:60px}
+.msg_foot .my-input{height:42px;}
+.msg_foot .send{height:42px;line-height:42px;font-size:16px;margin-top:6px;margin-right:6px;}
+.msgs .msg .img{height:50px;width:50px;line-height:50px;}
+.msgs .msg .bd{font-size:16px;}
+</style>
+<body id="app">
+	<div class="w3-panel w3-blue w3-card-4 mt0 p10">
+
+		<p class="m0" title="{%peerid%}">节点编号(peerid)：{%ecstr(peerid,8,8)%} <a i-onclick="{%copy(peerid)%}"
+				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
+		<p class="m0" title="{%recipient%}">加密公钥(recipient)：{%ecstr(recipient,8,8)%} <a i-onclick="{%copy(recipient)%}"
+				href="javascript:;" class="cfff"><i title="copy" class="fa fa-copy"></i></a></p>
+		<p class="m0">
+			<a href="javascript:;" class="w3-btn w3-teal" i-onclick="{%copy_all('节点编号:',peerid,'加密公钥:',recipient)%}"><i title="copy all" class="fa fa-copy"></i></a>
+			<a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_secret()">更新公钥/密码</a>
+		</p>
+	</div>
+
+	<div class="wrap mt20">
+		<div class="row col-sp12">
+			<div class="w4">
+				<div class="w3-blue p5">我的频道</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_ipnskey()">新增频道</a></li>
+					<li i-for="ipnskeyslist">
+						{%item[0]%}:<a href="javascript:;" i-onclick="{%load_ipns(item[1],item[0])%}"
+							title="{%item[1]%}" class="clink">{%ecstr(item[1],8,6)%}</a>
+						&nbsp; <a i-onclick="{%copy(item[1])%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+						&nbsp; <a i-if="{% item[0]!='self' %}" i-onclick="{%rm_ipnskey(item[0])%}" href="javascript:;" class="clink"><i class="fa fa-trash-o"></i></a>
+						<!-- &nbsp; <a i-if="{% $.inArray(item[1],followed_ns)<0 && item[0]!='self' %}" i-onclick="{%follow(item[0],item[1])%}" href="javascript:;" class="clink"><i class="fa fa-bell"></i></a> -->
+					</li>
+				</ul>
+
+				<div class="w3-blue p5 mt10">关注的频道</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_follow()">新增关注</a></li>
+					<li i-for="followslist">{%item.name%}:<a href="javascript:;" i-onclick="{%load_ipns(item.ns,item.name)%}" title="{%item.ns%}" class="clink">{%ecstr(item.ns,8,4)%}</a>[{%fmt_date(item.UpdatedAt)%}]
+						&nbsp; <a i-onclick="{%copy(item.ns)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+						&nbsp; <a i-onclick="{%unfollow(item.ID)%}" href="javascript:;" class="clink"><i title="unfollow" class="fa fa-bell-slash"></i></a>
+						<a i-onclick="{%load_listen_ipfs(item.name)%}" class="new_msg" href="javascript:;" style="color:red" data-name="{%item.name%}"></a>
+					</li>
+				</ul>
+				<div class="w3-blue p5 mt10">伙伴节点</div>
+				<ul class="w3-ul w3-border bk">
+					<li><a href="javascript:;" class="w3-btn w3-red" onclick="dlg_new_peer()">新增伙伴</a></li>
+					<li i-for="peerslist">
+						{%item.name%}:<a href="javascript:;" i-onclick="{%open_chat(item.peerid)%}" title="{%item.peerid%}" class="clink">{%ecstr(item.peerid,6,6)%}</a>
+						&nbsp; <a i-onclick="{%copy(item.peerid)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>
+						&nbsp; <a i-onclick="{%set_stream_id(item.peerid)%}" href="javascript:;" class="clink"><i title="chat" class="fa fa-comments-o"></i></a>
+						&nbsp; <a i-onclick="{%set_publish_key(item.recipient)%}" href="javascript:;" class="clink" title="publish to him"><i class="fa fa-pencil-square-o"></i></a>
+						&nbsp; <a i-onclick="{%rm_peer(item.ID,item.name)%}" href="javascript:;" class="clink" title="remove peer"><i class="fa fa-bell-slash"></i></a>
+					</li>
+				</ul>
+				<div class="w3-blue p5 mt10">点对点</div>
+				<ul class="w3-ul w3-border bk">
+					<li>
+						<label><input type="checkbox" class="w3-radio" value="1" i-checked="{%stream_on%}" i-onclick="switch_stream">开启点对点</label>
+					</li>
+					<div id="chatlist" style="max-height:360px;overflow-y:scroll;overflow-y:auto;">
+						<li i-for="streamlist">
+							<b>{%peername(item.from)%}</b> → <b style="color:#FF66FF">{%peername(item.to)%}</b>:
+							<!--<a i-onclick="{%copy(item.from)%}" href="javascript:;" class="clink"><i title="copy" class="fa fa-copy"></i></a>-->
+							<a href="javascript:;" i-onclick="{%set_stream_id(item.pid)%}" class="clink"><i title="reply" class="fa fa-reply"></i></a>
+							{%item.message%}
+						</li>
+					</div>
+					<li>
+						<form class="" onsubmit="return false;" i-onsubmit="newstream">
+							<input class="w3-input w3-border" name="peerid" type="text" placeholder="节点编号" id="stream_peerid" required />
+							<input class="w3-input w3-border" name="body" id="chatbody" type="text" placeholder="内容" required />
+							<button type="submit" class="w3-btn w3-tiny w3-blue" id="btn_stream">发送</button>
+						</form>
+					</li>
+				</ul>
+			</div>
+			<div class="w8">
+				<div class="w3-border">
+					<div class="w3-container w3-blue">
+						<h3>发表内容</h3>
+					</div>
+					<form class="w3-container" id="publish_form" onsubmit="publish_content(this);return false;">
+						<div class="w3-section">
+							<label>频道：</label>
+							<select name="nsname" class="w3-select">
+								<option i-for="ipnskeyslist" value="{%item[0]%}">{%item[0]%}</option>
+							</select>
+						</div>
+						<div class="w3-section">
+							<label>发送目标：</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@all" onclick="$('#to_checkbox').hide()" />所有人</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="@me" onclick="$('#to_checkbox').hide()" />仅自己可见</label>
+							<label><input type="radio" class="w3-radio" name="to0" value="toother" onclick="$('#to_checkbox').show()" checked />加密发布</label>
+							<div id="to_checkbox" class="p15 w3-pale-green">
+								<div i-for="peerslist">
+									<label><input type="checkbox" class="w3-check" name="to" value="{%item.recipient%}" />【{%item.name%}】{%ecstr(item.peerid,12,6)%}</label>
+								</div>
+							</div>
+						</div>
+						<div class="w3-section dn">
+							<label>内容类型：</label>
+							<label><input type="radio" class="w3-radio" name="type" value="markdown" checked>markdown</label>
+							<label><input type="radio" class="w3-radio" name="type" value="html">html</label>
+						</div>
+						<div class="w3-section">
+							<label>内容：</label>
+							<textarea class="w3-input" name="body"></textarea>
+						</div>
+						<div class="w3-section">
+							<label>附件：</label>
+							<input style="position:absolute;width:8px;left:-10px;z-index:-10;opacity:0" type="file" name="uploads" id="upfile" multiple="multiple"/>
+							<div id="upfile_div" class="updiv rel">
+								<div class="dropdiv abs" id="dropdiv"><p class="tc abs m0" style="bottom:6px;left:0;right:0">或将文件拖放到此处</p><!--<br/>或粘贴(CTRL+V)图片或截图到这里--></div>
+								<a class="w3-btn w3-blue w3-small" id="btn_file" href="javascript:;">点此选择文件(多选)</a>
+								<div class="uplist rel" id="uplist" style="text-align:left;z-index:3"><p class="clink">未选择</p></div>
+							</div>
+							<!--<input type="hidden" name="init" value="true" />-->
+						</div>
+						<div class="w3-section">
+							<button type="submit" id="btn_publish" class="w3-btn w3-blue">发表内容<i class="fa fa-cloud-upload"></i></button>
+						</div>
+					</form>
+				</div>
+
+				<div class="w3-border mt10">
+					<div class="w3-container w3-blue">
+						<h3>内容</h3>
+					</div>
+					<ul class="w3-ul bk">
+						<li i-for="postlist">
+							<div>
+								<b>{%item.name%}: </b>
+								<span class="tm c666" i-if="{%item.tm%}">时间:{%item.tm%}</span>
+								<a class="clink" i-onclick="{%copy(item.url)%}" href="javascript:;">{%ecstr(item.url,8,6)%} <i title="copy" class="fa fa-copy"></i></a>
+								<div class="cbody" i-html="{%item.dt.body%}"></div>
+							</div>
+							<div i-if="{%item.dt.data%}" style="color:red">返回错误: {%item.dt.data%}</div>
+							<div i-if="{%item.dt.attachments.length%}" style="color:#996600">附件:
+								<p i-for="{%item.dt.attachments%}" i-item="att" style="margin:0">
+								<a href="{%item.url%}{%att%}" target="_blank">{%att%}</a>
+								</p>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+
+
+
+<div i-for="peer_stream" class="dn chatdiv" id="chatdiv_{%index%}">
+	<div class="msgs rel" chat_peerid="{%item.peerid%}">
+		<!--<div i-for="{%item.msgs%}" i-item="msg" i-if="{%msg.type=='recv'%}" class="msg fix {%msg.type%}">
+			<div class="tm">{%fmt_date(msg.tm)%}</div>
+			<div class="img">{%(item.name).substr(0,1).toUpperCase()%}</div>
+			<p class="bd">{%msg.message%}</p>
+		</div>
+		<div i-for="{%item.msgs%}" i-item="msg" i-if="{%msg.type=='send'%}" class="msg fix {%msg.type%}">
+			<div class="tm">{%fmt_date(msg.tm)%}</div>
+			<div class="img">我</div><span class="nm">我</span>
+			<p class="bd">{%msg.message%}</p>
+		</div>-->
+		
+	</div>
+	<div style="height:60px;"></div>
+	<div class="msg_foot">
+		<form onsubmit="return false;" i-onsubmit="newstream">
+			<input type="hidden" name="peerid" value="{%item.peerid%}"/>
+			<input class="my-input" type="text" name="body" value="" />
+			<button type="submit" class="send w3-blue">发送</button>
+		</form>
+	</div>
+</div>
+
+
+</body>
+
+
+
+
+<!-- The Modal -->
+<div id="pwd_dialog" class="w3-modal">
+	<div class="w3-modal-content pt35 pb25">
+		<div class="w3-container">
+			<span onclick="$('id01').hide()" class="w3-button w3-display-topright">&times;</span>
+			<form class="w3-container" onsubmit="set_local_pwd(this);return false;">
+				<p><label>密码验证</label>
+					<input class="w3-input" type="password" name="password" />
+				</p>
+				<button type="submit" class="w3-btn w3-blue">确定</button>
+			</form>
+		</div>
+	</div>
+</div>
+
+
+<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;position:fixed;top:0;z-index:-1;" readonly></textarea>
+<div style="height:50px">&nbsp;</div>
+
+
+<style type="text/css" media="screen">
+.layui-layer-page .layui-layer-content{overflow:hidden;}
+</style>
+
+
+
+<script type="text/javascript" src="/asset/layer/layer.js"></script>
+<script type="text/javascript" src="/asset/js/dream-msg.min.js"></script>
+<script type="text/javascript" src="/asset/js/iceView.js"></script>
+<script type="text/javascript" src="/asset/js/marked.min.js"></script>
+<script type="text/javascript" src="/asset/js/fn.js"></script>
+<script type="text/javascript">
+
+
+function btn_ok(btn, txt) { $(btn).removeAttr('disabled').removeAttr('style').html(txt); }
+function btn_load(btn, txt) { $(btn).attr('disabled', 'disabled').attr('style', 'background-color:#616161 !important').html(txt); }
+
+var el_copy = $('#copytxt').get(0)
+function do_copy(str) {
+	el_copy.value = str;
+	//el_copy.setSelectionRange(0,99999);//fix ios
+	//el_copy.select();
+	selectText(el_copy, 0, str.length);
+	document.execCommand("Copy");
+	el_copy.blur();
+	layer.msg('已复制', { time: 600 });
+}
+function selectText(textbox, startIndex, stopIndex) {
+	if (textbox.createTextRange) {//ie
+		var range = textbox.createTextRange();
+		range.collapse(true);
+		range.moveStart('character', startIndex);//起始光标
+		range.moveEnd('character', stopIndex - startIndex);//结束光标
+		range.select();//不兼容苹果
+	} else {//firefox/chrome
+		textbox.setSelectionRange(startIndex, stopIndex);
+		textbox.focus();
+	}
+}
+
+function set_local_pwd(f) {
+	var pwd = $.trim(f.password.value);
+	if (!pwd) {
+		alerterr('password must not null!'); return;
+	}
+	loading()
+	$.post('/getsecretkey', { 'password': pwd }, function (res) {
+		hideload()
+		if (res.code == '1') {
+			sessionStorage.setItem('secretkey', res.data);
+			$('#pwd_dialog').hide();
+			init();
+		} else {
+			alerterr(res.data)
+		}
+	}, 'json');
+}
+
+
+
+
+var evtSc = null;
+function open_stream(url,fn) {
+	if (evtSc) evtSc.close();
+	evtSc = new EventSource(url);
+	evtSc.onmessage = function (e) {
+		fn(e.data)
+		//console.log(e)
+	}
+	evtSc.onerror = function (e) {
+		console.log(e)
+	}
+}
+function close_stream() {
+	if (evtSc) {
+		evtSc.close()
+	}
+	evtSc = null;
+}
+
+var evt1 = null;
+function open_stream1(url,fn) {
+	if (evt1) evt1.close();
+	evt1 = new EventSource(url);
+	evt1.onmessage = function (e) {
+		fn(e.data)
+		//console.log(e)
+	}
+	evt1.onerror = function (e) {
+		console.log(e)
+	}
+}
+function close_stream1() {
+	if (evt1) {
+		evt1.close()
+	}
+	evt1 = null;
+}
+
+function left(str, len) {
+	if (len > 0) { return str.substring(0, len) }
+	else { return '' }
+}
+function right(str, len) {
+	if (str.length - len >= 0 && str.length >= 0 && str.length - len <= str.length) {
+		return str.substring(str.length - len, str.length)
+	}
+	else { return '' }
+}
+function z2(v){
+	return (1*v>9)?v:'0'+v;
+}
+function format_date(dtstr){
+	var dt=new Date(dtstr)
+	return z2(dt.getMonth()+1)+'-'+z2(dt.getDate())+' '+z2(dt.getHours())+':'+z2(dt.getMinutes())+':'+z2(dt.getSeconds());
+}
+function dlg_chat(el,title){
+	return layer.open({
+		'type':1,shade:0,shadeClose:false,id:'dlg_'+el.replace('#',''),isOutAnim:false,maxmin:true,
+		area:['330px','66%'],
+		title:title,
+		content:$(el),
+		success:function(dom,idx){
+			var hh=$(dom).height();
+			var h1=hh-(50+60)
+			//console.log(hh,h1)
+			$('.msgs').css('max-height',h1+'px').scrollTop(999999);
+		}
+	});
+}
+function add_msg(el,dt){
+	var html=''
+	if(dt.type=='send'){
+		html=`<div class="msg fix send">
+			<div class="tm">`+dt.tm+`</div>
+			<div class="img">我</div><span class="nm">我</span>
+			<p class="bd">`+dt.message+`</p>
+		</div>`
+	}else{
+		html=`<div class="msg fix recv">
+			<div class="tm">`+format_date(dt.tm)+`</div>
+			<div class="img">`+(dt.name).substr(0,1).toUpperCase()+`</div>
+			<p class="bd">`+dt.message+`</p>
+		</div>`
+	}
+	$(el+' .msgs').append(html);
+}
+
+var iv = ice.view('#app', {
+	followed_ns: [],
+	postlist: [],
+	error_ipns_list: [],
+	p2p_on: [],
+	peerid: '', recipient: '',
+	test:{'aa':1,'bb':2},
+	ecstr: function (v, l1, l2) {
+		return left(v, l1) + '...' + right(v, l2);
+	},
+	copy: function (str) {
+		do_copy(str);
+	},
+	copy_all: function () {
+		var arr = []
+		for (var i = 0; i < arguments.length; i++) {
+			arr.push(arguments[i]);
+		}
+		do_copy(arr.join("\n"));
+	},
+	render_body:function(v){
+		return v.replace(/\n/g,'<br />')
+	},
+	fmt_date:function(v){
+		return format_date(v)
+	},
+	getrecipient: function () {
+		var zs = this;
+		$.get('/getrecipient', null, null, 'json').then(function (res) {
+			if (res['code']) {
+				zs.recipient = res.data;
+				zs.getpeerid()
+			} else {
+				$('#pwd_dialog').show();
+			}
+		});
+	},
+	getpeerid: function () {
+		var zs = this;
+		$.get('/getid', function (res) {
+			if (res['code']) {
+				zs.peerid = res['data']['peerid'];
+			}
+			zs.load_all()
+		}, 'json')
+	},
+	listipnskey: function () {
+		var zs = this;
+		$.ajax({
+			url: '/listipnskey',
+			success: function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.ipnskeyslist = res['data'];
+			}
+		})
+	},
+	rm_ipnskey: function (nsname) {
+		var zs = this;
+		layconfirm('是否要删除【' + nsname + '】？', function () {
+			$.post('/removeipnskey', { 'nsname': nsname }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.listipnskey();
+			}, 'json');
+		})
+	},
+	getfollows: function () {
+		var zs = this;
+		zs.followed_ns = [];
+		$.get('/getfollows', function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			$.each(res['data'], function (k, v) {
+				zs.followed_ns.push(v.ns)
+			})
+			zs.followslist = res['data']
+		}, 'json')
+	},
+	follow: function (name, ns) {
+		var zs = this;
+		$.post('/follow', { 'name': name, 'ns': ns }, function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			zs.getfollows();
+		}, 'json');
+	},
+	unfollow: function (id) {
+		var zs = this;
+		layconfirm('是否要取消关注？', function () {
+			$.post('/unfollow', { 'id': id }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.getfollows();
+				zs.listipnskey();
+			}, 'json');
+		})
+	},
+	newsecret: function (oldpwd, newpwd) {
+		var zs = this;
+		$.post('/newsecretkey', { 'oldpassword': oldpwd, 'password': newpwd }, function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			alertok('密码修改成功!', function () {
+				zs.getrecipient();
+			})
+		}, 'json');
+	},
+
+	peer_stream:[],//每个peer的聊天记录
+	peernames_obj: {},
+	peername: function (pid) {
+		var zs = this, nm = '';
+		if (zs.peernames_obj[pid]!=undefined) return zs.peernames_obj[pid];
+		if (pid == zs.peerid) return '我';
+		$.each(zs.peerslist, function (k, v) {
+			if (v['peerid'] == pid) {
+				zs.peernames_obj[pid] = v.name;
+				nm = v.name;
+				return false;
+			}
+		});
+		if(nm=='') return '我';
+		return nm;
+	},
+	getpeers: function () {
+		var zs = this;
+		$.get('/getpeers', function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			zs.peerslist = res['data'];
+			$.each(res['data'],function(k,v){
+				//zs.peer_stream[v.peerid]={'name':v['name'],msgs:[]};
+				//zs.peer_stream[v.peerid]=[];
+				zs.peer_stream.push({'name':v.name,'peerid':v.peerid,'msgs':[]})
+				zs.peernames_obj[v.peerid]=v['name'];
+			})
+		}, 'json')
+	},
+	add_peer: function (name, recipient, peerid) {
+		var zs = this;
+		$.post('/addpeer', { 'name': name, 'recipient': recipient, 'peerid': peerid }, function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			alertok('节点添加成功!', function () {
+				zs.getpeers();
+			})
+		}, 'json');
+	},
+	rm_peer: function (id,name) {
+		var zs = this;
+		layconfirm('是否要移除节点【'+name+'】？', function () {
+			$.post('/removepeer', { 'id': id }, function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.getpeers();
+			}, 'json');
+		})
+	},
+	getmessages: function () {
+		var zs = this;
+		$.get('/getpeers', function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			zs.streamlist = res['data']
+		}, 'json')
+	},
+	load_all: function () {
+		this.listipnskey();
+		this.getfollows();
+		this.getpeers();
+		this.stream_start();
+		this.listenfolloweds();
+	},
+	load_ipns: function (url, name) {
+		if (!url) return;
+		if (url.indexOf('/ipns/') < 0) return;
+		if (!end_with(url, '/')) url = url + '/';
+		var zs = this;
+		zs.postlist = []
+		$('.new_msg[data-name='+name+']').html('')
+		$.ajax({
+			url: url,
+			cache:false,
+			success: function (res) {
+				if (!res['code']) { alerterr(res['data']); return }
+				zs.load_ipfs(res['data']['path'], name);
+			},
+			error: function () {
+				zs.error_ipns_list.push(url);
+				zs.error_ipns_list = $.unique(zs.error_ipns_list);
+			}
+		});
+	},
+	load_ipfs: function (url, name) {
+		if (!url) return;
+		if (url.indexOf('/ipfs/') < 0) return;
+		if (!end_with(url, '/')) url = url + '/';
+		//var nsk=ipns.replace(/\//g,'');
+		var exist = 0;
+		$.each(this.postlist, function (k, v) {
+			if (v['url'] == url) {
+				exist = 1; return false;
+			}
+		});
+		if (exist) return;
+		var zs = this;
+		$.get(url + 'meta.json', function (res) {
+			if(res['next']){
+				zs.load_ipfs(res['next'], name);
+			}
+			$.get(url+'post.json',function(res1){
+				if(!('body' in res1)){return}
+				res1['body']=marked.parse(res1['body'],{'baseUrl':url});
+				var tm=('createdAt' in res)?format_date(res['createdAt']):''
+				zs.postlist.push({ 'name': name,'url':url,'tm':tm, 'dt': res1, })
+			},'json')
+		}, 'json')
+	},
+
+	listen_obj:{},
+	listenfolloweds:function(){
+		var zs = this;
+		open_stream1('/listenfolloweds',function(dt){
+			if(dt=='started') return;
+			var v=JSON.parse(dt);
+			console.log(v)
+			zs.listen_obj[v.name]=v;
+			Dreamer.info('【'+v.name+'】有新文档更新！');
+			$('.new_msg[data-name='+v.name+']').html('new')
+		});
+	},
+	load_listen_ipfs:function(name){
+		var zs = this;
+		if(!(name in zs.listen_obj)) return;
+		load_ipfs(zs.listen_obj[name]['latest'],name)
+		$('.new_msg[data-name='+name+']').html('')
+	},
+
+	streamlist: [],
+	stream_on: true,
+	stream_users: [],
+	stream_1: true,
+	
+	open_chat:function(pid){
+		var zs=this;
+		$.each(zs.peer_stream,function(kk,vv){
+			if(vv['peerid']==pid){
+				dlg_chat('#chatdiv_'+kk,'与('+vv.name+')聊天中')
+				return false;
+			}
+		})
+	},
+	stream_msg:function(dt){
+		if (dt == 'started') return;
+		var zs=this;
+		var v = JSON.parse(dt);
+		if(!('to' in v)) v['to']=zs.peerid;
+		if(!('pid' in v)) v['pid']=v.from;
+		if(!('tm' in v)) v['tm']=format_date(new Date());
+		v['name']=zs.peername(v.pid),
+		zs.streamlist.push(v)
+		//this.peer_stream[v.from]['msgs'].push({'message':v.message})
+		//this.peer_stream[v.from].push(v)
+		$.each(zs.peer_stream,function(kk,vv){
+			if(vv['peerid']==v.from||vv['peerid']==v.to){
+				zs.peer_stream[kk]['msgs'].push(v)
+				add_msg('#chatdiv_'+kk,v)
+				return false;
+			}
+		});
+		$('#chatlist').scrollTop(999999);
+		$('.msgs').scrollTop(999999);
+	},
+	stream_start: function () {
+		var zs = this;
+		open_stream('/setstream',function (dt) {
+			zs.stream_msg(dt);
+		});
+		setTimeout(function(){
+			zs.stream_local()
+		},1200);
+	},
+	switch_stream: function (el) {
+		var zs = this;
+		if (el.checked) {
+			zs.stream_on = true;
+			open_stream('/setstream',function (dt) {
+				zs.stream_msg(dt);
+			});
+		} else {
+			zs.stream_on = false;
+			close_stream()
+		}
+	},
+	stream_local:function(){
+		var zs = this;
+		$.get('/getmessages', function (res) {
+			if (!res['code']){alerterr(res['data']); return }
+			var arr=[]
+			$.each(res['data'],function(k,v){
+				if(v['body']=='started'){return true;}
+				var dt=JSON.parse(v['body']);
+				dt['tm']=v['UpdatedAt'];
+				dt['type']='recv';
+				arr.push(JSON.stringify(dt))
+			});
+			var arr1=arr.reverse()
+			$.each(arr1,function(k,v){
+				zs.stream_msg(v);
+				//zs.streamlist.push(v)
+			});
+			
+		}, 'json')
+	},
+	
+	newstream: function (el) {
+		if (!this.stream_on) { msgerr('点对点未开启'); return; }
+		var zs = this;
+		btn_load('#btn_stream', '发送中');
+		var topid=el.peerid.value;
+		var dt = { 'peerid': topid, 'body': el.body.value };
+		$.post('/newstream', dt, function (res) {
+			btn_ok('#btn_stream', '发送');
+			if (!res['code']) { alerterr(res['data']); return }
+			var dd={ 'from': zs.peerid,'to':topid,'pid':topid,'message': el.body.value,'type':'send',tm:format_date(new Date()) }
+			zs.stream_msg(JSON.stringify(dd));
+			//el.peerid.value = '';
+			el.body.value = '';
+		})
+	},
+	set_stream_id:function(pid){
+		$('#stream_peerid').val(pid)
+		$('#chatbody').focus()
+	},
+	publish_key:'',
+	set_publish_key:function(k){
+		this.publish_key=k;
+		$('input[name=to][value='+k+']').prop('checked',true);
+		//$('input[name=to0][value="toother"]').prop('checked',true);
+		$('#to_checkbox').show();
+	},
+});
+
+function dlg_new_peer() {
+	layinput('添加新节点', '', function (v) {
+		v = $.trim(v);
+		if (!v) { msgerr('输入节点名称'); return; }
+		var new_recipient = $.trim($('#new_recipient').val());
+		if (!new_recipient) { msgerr('请输入recipient'); return; }
+		var new_peerid = $.trim($('#new_peerid').val());
+		if (!new_peerid) { msgerr('请输入peerid'); return; }
+		iv.data.add_peer(v, new_recipient, new_peerid);
+	}, function () {
+		var html = `
+		<br/><input type="text" id="new_peerid" class="layui-layer-input" placeholder="节点编号peerid"/>
+		<br/><input type="text" id="new_recipient" class="layui-layer-input" placeholder="加密公钥recipient"/>
+	`;
+		$(".layui-layer-content").append(html);
+		setTimeout(function () {
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '节点名称(自定义)');
+		}, 100);
+	})
+}
+
+function dlg_new_secret() {
+	layinput('更新公钥/密码', '', function (v) {
+		v = $.trim(v);
+		if (!v) { msgerr('输入当前密码'); return; }
+		var ns = $.trim($('#new_pwd').val());
+		if (!ns) { msgerr('未输入新密码'); return; }
+		iv.data.newsecret(v, ns);
+	}, function () {
+		$(".layui-layer-content").append(`<br/><input type="text" id="new_pwd" class="layui-layer-input" placeholder="新密码"/>`);
+		setTimeout(function () {
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '当前密码');
+		}, 100);
+	})
+}
+function dlg_new_follow() {
+	layinput('请输入关注的频道名和ns', '', function (v) {
+		v = $.trim(v);
+		if (!v) { msgerr('未输入name'); return; }
+		var ns = $.trim($('#follow_ns').val());
+		if (!ns) { msgerr('未输入ns'); return; }
+		iv.data.follow(v, ns);
+	}, function () {
+		$(".layui-layer-content").append(`<br/><input type="text" id="follow_ns" class="layui-layer-input" placeholder="输入ns"/>`);
+		setTimeout(function () {
+			$('.layui-layer-content input[type=text]:eq(0)').attr('placeholder', '请输入名称');
+		}, 100);
+	})
+}
+function dlg_new_ipnskey() {
+	layinput('请输入频道的ns', '', function (v) {
+		v = $.trim(v);
+		if (!v) { msgerr('未输入'); return; }
+		$.post('/newipnskey', { 'nsname': v }, function (res) {
+			if (!res['code']) { alerterr(res['data']); return }
+			iv.data.listipnskey()
+		})
+	})
+}
+
+function publish_content(f) {
+	var iptfile = document.getElementById('upfile');
+	var flen = iptfile.files.length;
+	var formdata = new FormData(document.getElementById('publish_form'));
+	if (flen < 1) {
+		formdata.delete('uploads');
+	}
+	var to0 = formdata.get('to0');
+	if (to0 == '@all') {
+		formdata.delete('to');
+	} else if (to0 == '@me') {
+		formdata.delete('to');
+		formdata.append('to','');
+	}else if (to0 == 'toother') {
+		if(!$('input[type=checkbox][name=to]:checked').length){
+			msgcry('请选择发送对象！')
+			return;
+		}
+	}
+	var bd=$.trim(f.body.value)
+	if(!bd){
+		msgcry('内容不得为空！')
+		return;
+	}
+	formdata.delete('to0');
+	//loading();
+
+	btn_load('#btn_publish', '提交中..')
+	$.ajax({
+		url: '/publish',
+		type: "POST",
+		data: formdata,
+		dataType: 'json',
+		processData: false,
+		contentType: false,
+		error: function () { hideload(); alerterr('发布失败'); },
+		success: function (res) {
+			//hideload()
+			btn_ok('#btn_publish', '发表内容')
+			if (res.code == '1') {
+				alertok('发布成功!');
+				iv.data.listipnskey();
+				f.reset()
+			} else {
+				alerterr(res.data)
+			}
+		}
+	})
+}
+function init() {
+	iv.data.getrecipient();
+}
+
+
+function formatBytes(size){ 
+	var units=['B','K','M','G','TB']; 
+	for(i=0;size>=1024&&i<4;i++){size/=1024;}
+	return Math.round(size,2)+' '+units[i];
+}
+
+
+function render_files(fs){
+	var s='';
+	for(var i=0;i<fs.length;i++){
+		var f=fs[i];
+		s+='<p class="clink">'+f.name+'('+formatBytes(f.size)+')</p>'
+	}
+	$('#uplist').html(s)
+}
+$(function () {
+	init();
+
+	//先阻止默认事件
+	$(document).on({
+		dragleave:function(e){	  //拖离
+			e.preventDefault();
+		},
+		drop:function(e){		   //拖后放
+			e.preventDefault();
+		},
+		dragenter:function(e){	  //拖进
+			e.preventDefault();
+		},
+		dragover:function(e){	   //拖来拖去
+			e.preventDefault();
+		}
+	});
+
+	$('#upfile').on('change',function(e){
+		render_files(e.target.files)
+		//$('#uplist').html('<p class="clink">已选择('+e.target.files.length+')文件</p>')
+	})
+	$(document).on('click','#btn_file',function(){
+		$('#upfile').trigger('click');
+	}).on('drop','#dropdiv',function(e){
+		e.preventDefault();
+		var files = e.originalEvent.dataTransfer.files;
+		$('#upfile').prop('files',files);
+		render_files(files);
+		//$('#uplist').html('<p class="clink">已选择('+files.length+')文件</p>')
+	})/*.on('paste','#dropdiv',function(e){
+		e.preventDefault();
+		var cb=(e.clipboardData||e.originalEvent.clipboardData);
+		if(!cb.items){return;}
+		console.log(cb.items)
+		render_paste_files(cb.items);
+	});*/
+})
+
+
+
+</script>
+
+</html>
+{{end}}

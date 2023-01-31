@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,31 +25,32 @@ const (
 	PROGRAMSDB   = "self.programs"
 	ORBITDIR     = "orbitdb"
 
-	KV   StoreType = "keyvalue"
-	DOCS StoreType = "docstore"
-	LOG  StoreType = "eventlog"
+	STORETYPE_KV   = "keyvalue"
+	STORETYPE_DOCS = "docstore"
+	STORETYPE_LOG  = "eventlog"
 )
 
-type StoreType string
-
 type Instance struct {
-	ctx context.Context
-
 	Dir  string //orbitdb dirctory
-	Repo string
+	Repo string //ipfs repo path
 
-	IPFSNode    *core.IpfsNode
-	IPFSCoreAPI icore.CoreAPI
+	IPFSNode    *core.IpfsNode //ipfsnode
+	IPFSCoreAPI icore.CoreAPI  //ipfscoreapi
 
-	OrbitDB  orbitdb.OrbitDB
-	Programs orbitdb.KeyValueStore
+	OrbitDB  orbitdb.OrbitDB       //orbitdb object
+	Programs orbitdb.KeyValueStore // buildin db, local-only, to store other dbs information
+}
+type DBInfo struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Address string `json:"address"`
+	AddedAt string `json:"addat"`
 }
 
 // BootInstance 启动一个实例
 func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, err error) {
 
 	ins = new(Instance)
-	ins.ctx = ctx
 
 	if repoPath == DEFAULT_PATH {
 		repoPath, err = config.PathRoot()
@@ -86,12 +86,10 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 		return
 	}
 
-	programs, err := ins.GetProgramsDB()
-	log.Println("programs:", programs)
 	return
 }
 
-func (ins *Instance) CreateDB(name string, storetype StoreType, accesseIDs []string) (db iface.Store, err error) {
+func (ins *Instance) CreateDB(ctx context.Context, name string, storetype string, accesseIDs []string) (db iface.Store, err error) {
 
 	if name == PROGRAMSDB {
 		err = fmt.Errorf("name can not be '%s'", PROGRAMSDB)
@@ -103,7 +101,7 @@ func (ins *Instance) CreateDB(name string, storetype StoreType, accesseIDs []str
 		},
 	}
 
-	db, err = ins.OrbitDB.Create(ins.ctx, name, string(storetype), &orbitdb.CreateDBOptions{
+	db, err = ins.OrbitDB.Create(ctx, name, storetype, &orbitdb.CreateDBOptions{
 		AccessController: ac,
 	})
 	if err != nil {
@@ -120,24 +118,26 @@ func (ins *Instance) CreateDB(name string, storetype StoreType, accesseIDs []str
 		return
 	}
 
-	_, err = ins.Programs.Put(ins.ctx, name, dbinfo)
+	_, err = ins.Programs.Put(ctx, db.Address().String(), dbinfo)
 
 	return
 }
 
-func (ins *Instance) OpenDB(address string) (db iface.Store, err error) {
+func (ins *Instance) OpenDB(ctx context.Context, address string) (db iface.Store, err error) {
 
-	db, err = ins.OrbitDB.Open(ins.ctx, address, &orbitdb.CreateDBOptions{})
+	db, err = ins.OrbitDB.Open(ctx, address, &orbitdb.CreateDBOptions{})
 	if err != nil {
 		return
 	}
-	err = db.Load(ins.ctx, -1)
+
+	err = db.Load(ctx, -1)
+
 	return
 }
 
-func (ins *Instance) AddDB(address string) (db iface.Store, err error) {
+func (ins *Instance) AddDB(ctx context.Context, address string) (db iface.Store, err error) {
 
-	db, err = ins.OpenDB(address)
+	db, err = ins.OpenDB(ctx, address)
 	if err != nil {
 		return
 	}
@@ -152,13 +152,14 @@ func (ins *Instance) AddDB(address string) (db iface.Store, err error) {
 		return
 	}
 
-	_, err = ins.Programs.Put(ins.ctx, address, dbinfo)
+	_, err = ins.Programs.Put(ctx, db.Address().String(), dbinfo)
 
 	return
 }
 
-func (ins *Instance) RemoveDB(address string) (err error) {
-	_, err = ins.Programs.Delete(ins.ctx, address)
+func (ins *Instance) RemoveDB(ctx context.Context, address string) (err error) {
+
+	_, err = ins.Programs.Delete(ctx, address)
 	return
 }
 
@@ -171,19 +172,20 @@ func (ins *Instance) GetOwnPubKey() (pubKey crypto.PubKey, err error) {
 }
 
 func (ins *Instance) Close() {
+	ins.Programs.Close()
 	ins.OrbitDB.Close()
 }
 
-func (ins *Instance) GetProgramsDB() (program map[string][]byte, err error) {
+func (ins *Instance) GetProgramsDB(ctx context.Context) (program map[string][]byte, err error) {
 	localonly := true //programs 不在网络同步
 	if ins.Programs == nil && ins.OrbitDB != nil {
-		ins.Programs, err = ins.OrbitDB.KeyValue(ins.ctx, PROGRAMSDB, &orbitdb.CreateDBOptions{
+		ins.Programs, err = ins.OrbitDB.KeyValue(ctx, PROGRAMSDB, &orbitdb.CreateDBOptions{
 			LocalOnly: &localonly,
 		})
 		if err != nil {
 			return
 		}
-		err = ins.Programs.Load(ins.ctx, -1)
+		err = ins.Programs.Load(ctx, -1)
 		if err != nil {
 			return
 		}
@@ -192,9 +194,11 @@ func (ins *Instance) GetProgramsDB() (program map[string][]byte, err error) {
 	return ins.Programs.All(), nil
 }
 
-type DBInfo struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Address string `json:"address"`
-	AddedAt string `json:"addat"`
+func TestDB() {
+	// _ = iface.KeyValueStore{}
+	// _ = iface.DocumentStore{}
+	// _ = iface.EventLogStore{}
+
+	// iface.Store
+
 }
