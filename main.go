@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"d-channel/database"
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -26,7 +28,7 @@ func main() {
 	for i, v := range peers {
 		log.Println(i, v.Address())
 	}
-
+	ins.GetProgramsDB(context.TODO())
 	o, e := ins.Programs.Put(context.TODO(), "hello", []byte("world"))
 
 	if e != nil {
@@ -34,7 +36,17 @@ func main() {
 		return
 	}
 
-	log.Println(o)
+	serial, err := o.Marshal()
+	log.Println(string(serial), err)
+
+	var any interface{}
+
+	json.Unmarshal(serial, &any)
+
+	fmt.Println(any)
+
+	data, err := json.Marshal("abc")
+	fmt.Println(string(data), err)
 
 	v, e := ins.Programs.Get(context.TODO(), "hello")
 	if e != nil {

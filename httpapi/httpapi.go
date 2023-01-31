@@ -3,12 +3,14 @@ package httpapi
 import (
 	"context"
 	"d-channel/database"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"berty.tech/go-orbit-db/iface"
 	"berty.tech/go-orbit-db/stores/operation"
 	"github.com/gin-gonic/gin"
+	"github.com/ipfs/go-cid"
 )
 
 var instance *database.Instance
@@ -112,7 +114,12 @@ func createdb(c *gin.Context) {
 type commandIn struct {
 	Address string
 	Method  string
-	Params  string
+	Params  params
+}
+
+type params struct {
+	Key   string
+	Value interface{}
 }
 
 func command(c *gin.Context) {
@@ -143,13 +150,13 @@ func command(c *gin.Context) {
 		connectingDBs[in.Address] = db
 	}
 
-	any, err := exec(c.Request.Context(), db, in.Method, in.Params)
+	result, err := exec(c.Request.Context(), db, in.Method, in.Params)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS, Data: any})
+	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS, Data: result})
 }
 
 func programs(c *gin.Context) {
@@ -167,17 +174,17 @@ func programs(c *gin.Context) {
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS, Data: programs})
 }
 
-func exec(ctx context.Context, db iface.Store, method string, params string) (any interface{}, err error) {
+func exec(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
 
 	switch db.Type() {
 	case database.STORETYPE_KV:
-		any, err = execKV(ctx, db, method, params)
+		any, err = execKV(ctx, db, method, p)
 
 	case database.STORETYPE_LOG:
-		any, err = execLog(ctx, db, method, params)
+		any, err = execLog(ctx, db, method, p)
 
 	case database.STORETYPE_DOCS:
-		any, err = execDocs(ctx, db, method, params)
+		any, err = execDocs(ctx, db, method, p)
 
 	default:
 		err = fmt.Errorf("db type error: %v", db.Type())
@@ -188,25 +195,36 @@ func exec(ctx context.Context, db iface.Store, method string, params string) (an
 	}
 
 	if op, ok := any.(operation.Operation); ok {
-		any, err = op.Marshal()
+		var data []byte
+		data, err = op.Marshal()
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(data, &any)
 	}
 
 	return
 
 }
 
-func execKV(ctx context.Context, db iface.Store, method string, params string) (any interface{}, err error) {
+func execKV(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
 	rdb := db.(iface.KeyValueStore)
 
 	switch method {
 	case METHOD_all:
 		any = rdb.All()
 	case METHOD_put:
-		any, err = rdb.Put()
+
+		var value []byte
+		value, err = json.Marshal(p.Value)
+		if err != nil {
+			return
+		}
+		any, err = rdb.Put(ctx, p.Key, value)
 	case METHOD_delete:
-		any, err = rdb.Delete()
+		any, err = rdb.Delete(ctx, p.Key)
 	case METHOD_get:
-		any, err = rdb.Get()
+		any, err = rdb.Get(ctx, p.Key)
 	default:
 		err = fmt.Errorf("method error: %v", method)
 	}
@@ -214,14 +232,24 @@ func execKV(ctx context.Context, db iface.Store, method string, params string) (
 	return
 
 }
-func execLog(ctx context.Context, db iface.Store, method string, params string) (any interface{}, err error) {
+func execLog(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
 	rdb := db.(iface.EventLogStore)
 
 	switch method {
 	case METHOD_add:
-		any, err = rdb.Add()
+		var value []byte
+		value, err = json.Marshal(p.Value)
+		if err != nil {
+			return
+		}
+		any, err = rdb.Add(ctx, value)
 	case METHOD_get:
-		any, err = rdb.Get()
+		var _cid cid.Cid
+		_cid, err = cid.Decode(p.Key)
+		if err != nil {
+			return
+		}
+		any, err = rdb.Get(ctx, _cid)
 	default:
 		err = fmt.Errorf("method error: %v", method)
 	}
@@ -229,18 +257,18 @@ func execLog(ctx context.Context, db iface.Store, method string, params string) 
 	return
 }
 
-func execDocs(ctx context.Context, db iface.Store, method string, params string) (any interface{}, err error) {
+func execDocs(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
 	rdb := db.(iface.DocumentStore)
 
 	switch method {
 	case METHOD_put:
-		any, err = rdb.Put()
+		any, err = rdb.Put(ctx, p.Value)
 	case METHOD_get:
-		any, err = rdb.Get()
+		any, err = rdb.Get(ctx, p.Key, nil)
 	case METHOD_delete:
-		any, err = rdb.Delete()
+		any, err = rdb.Delete(ctx, p.Key)
 	case METHOD_query:
-		any, err = rdb.Query()
+		// any, err = rdb.Query()
 	default:
 		err = fmt.Errorf("method error: %v", method)
 	}
