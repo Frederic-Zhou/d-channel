@@ -1,21 +1,20 @@
 package httpapi
 
 import (
-	"context"
 	"d-channel/database"
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"berty.tech/go-orbit-db/iface"
-	"berty.tech/go-orbit-db/stores/operation"
 	"github.com/gin-gonic/gin"
-	"github.com/ipfs/go-cid"
 )
 
+// 单例，数据库实例
 var instance *database.Instance
+
+// 单例，当前已连接的数据库map，key是数据库地址，value是数据库对象
 var connectingDBs map[string]iface.Store = map[string]iface.Store{}
 
+// 返回消息的的类型
 const (
 	MSG_SUCCESS = "success"
 	MSG_FAIL    = "fail"
@@ -23,6 +22,7 @@ const (
 	MSG_ERROR   = "error"
 )
 
+// 方法名称，
 const (
 	METHOD_all    = "all"
 	METHOD_put    = "put"
@@ -32,28 +32,32 @@ const (
 	METHOD_query  = "query"
 )
 
+// 响应的数据结构
 type response struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
 }
 
+// 运行HTTP接口
 func Run(addr string) error {
 
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
 
-	router.POST("/boot", bootInstance) // 发布
-	router.POST("/programs", programs) // 查看实例内所有数据库信息
-	router.POST("/close", closeInstance)
-	router.POST("/createdb", createdb)
-	router.POST("/command", command)
+	router.POST("/boot", bootInstance)   // 启动实例
+	router.POST("/programs", programs)   // 查看实例内置数据库，其中包含所有数据库信息
+	router.POST("/close", closeInstance) //关闭实例
+	router.POST("/createdb", createdb)   //创建数据库
+	router.POST("/removedb", removedb)   //移除数据库
+	router.POST("/command", command)     //执行数据库操作命令
 
 	return router.Run(addr)
 }
 
+// 启动实例，运行成功过后，赋值给全局变量 instance
 func bootInstance(c *gin.Context) {
 	if instance != nil {
-		c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
+		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance is created"})
 		return
 	}
 	var err error
@@ -66,22 +70,29 @@ func bootInstance(c *gin.Context) {
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 }
 
+// 关闭实例，关闭成功后，instance为空
 func closeInstance(c *gin.Context) {
 	if instance == nil {
 		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance nil"})
 		return
 	}
-	instance.Close()
+	err := instance.Close()
+	if err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		return
+	}
 	instance = nil
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 }
 
+// 创建数据库输入参数
 type createIn struct {
 	Name      string
 	StoreType string
 	AccessIDs []string
 }
 
+// 创建数据库
 func createdb(c *gin.Context) {
 
 	if instance == nil {
@@ -99,7 +110,6 @@ func createdb(c *gin.Context) {
 	}
 
 	db, err = instance.CreateDB(c.Request.Context(), in.Name, in.StoreType, in.AccessIDs)
-
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
@@ -111,17 +121,20 @@ func createdb(c *gin.Context) {
 
 }
 
+// 数据库命令参数
 type commandIn struct {
 	Address string
 	Method  string
 	Params  params
 }
 
+// 数据库命令参数中的参数
 type params struct {
 	Key   string
 	Value interface{}
 }
 
+// 执行数据库命令
 func command(c *gin.Context) {
 
 	if instance == nil {
@@ -140,7 +153,7 @@ func command(c *gin.Context) {
 
 	//检查是否是连接中的数据库
 	db, connecting := connectingDBs[in.Address]
-	//如果不是，检查是否存储过
+	//如果不是，连接并添加数据库（添加动作也会覆盖已经保存过的数据库，如果地址相同）
 	if !connecting {
 		db, err = instance.AddDB(c.Request.Context(), in.Address)
 		if err != nil {
@@ -150,6 +163,7 @@ func command(c *gin.Context) {
 		connectingDBs[in.Address] = db
 	}
 
+	//执行数据库操作命令。
 	result, err := exec(c.Request.Context(), db, in.Method, in.Params)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
@@ -159,6 +173,7 @@ func command(c *gin.Context) {
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS, Data: result})
 }
 
+// 获取程序内置数据库，以便于获得其他库的信息。
 func programs(c *gin.Context) {
 	if instance == nil {
 		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance nil"})
@@ -174,104 +189,37 @@ func programs(c *gin.Context) {
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS, Data: programs})
 }
 
-func exec(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
+type removeIn struct {
+	Address string
+}
 
-	switch db.Type() {
-	case database.STORETYPE_KV:
-		any, err = execKV(ctx, db, method, p)
-
-	case database.STORETYPE_LOG:
-		any, err = execLog(ctx, db, method, p)
-
-	case database.STORETYPE_DOCS:
-		any, err = execDocs(ctx, db, method, p)
-
-	default:
-		err = fmt.Errorf("db type error: %v", db.Type())
-	}
-
-	if err != nil {
+// 删除数据库
+func removedb(c *gin.Context) {
+	if instance == nil {
+		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance is null"})
 		return
 	}
 
-	if op, ok := any.(operation.Operation); ok {
-		var data []byte
-		data, err = op.Marshal()
-		if err != nil {
-			return
-		}
-		err = json.Unmarshal(data, &any)
+	var err error
+
+	in := &removeIn{}
+	if err = c.ShouldBind(in); err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		return
 	}
 
-	return
-
-}
-
-func execKV(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
-	rdb := db.(iface.KeyValueStore)
-
-	switch method {
-	case METHOD_all:
-		any = rdb.All()
-	case METHOD_put:
-
-		var value []byte
-		value, err = json.Marshal(p.Value)
+	db, ok := connectingDBs[in.Address]
+	if ok {
+		err = db.Close()
 		if err != nil {
+			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 			return
 		}
-		any, err = rdb.Put(ctx, p.Key, value)
-	case METHOD_delete:
-		any, err = rdb.Delete(ctx, p.Key)
-	case METHOD_get:
-		any, err = rdb.Get(ctx, p.Key)
-	default:
-		err = fmt.Errorf("method error: %v", method)
 	}
 
-	return
-
-}
-func execLog(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
-	rdb := db.(iface.EventLogStore)
-
-	switch method {
-	case METHOD_add:
-		var value []byte
-		value, err = json.Marshal(p.Value)
-		if err != nil {
-			return
-		}
-		any, err = rdb.Add(ctx, value)
-	case METHOD_get:
-		var _cid cid.Cid
-		_cid, err = cid.Decode(p.Key)
-		if err != nil {
-			return
-		}
-		any, err = rdb.Get(ctx, _cid)
-	default:
-		err = fmt.Errorf("method error: %v", method)
+	err = instance.RemoveDB(c.Request.Context(), in.Address)
+	if err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		return
 	}
-
-	return
-}
-
-func execDocs(ctx context.Context, db iface.Store, method string, p params) (any interface{}, err error) {
-	rdb := db.(iface.DocumentStore)
-
-	switch method {
-	case METHOD_put:
-		any, err = rdb.Put(ctx, p.Value)
-	case METHOD_get:
-		any, err = rdb.Get(ctx, p.Key, nil)
-	case METHOD_delete:
-		any, err = rdb.Delete(ctx, p.Key)
-	case METHOD_query:
-		// any, err = rdb.Query()
-	default:
-		err = fmt.Errorf("method error: %v", method)
-	}
-
-	return
 }
