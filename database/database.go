@@ -158,7 +158,6 @@ func (ins *Instance) AddDB(ctx context.Context, address string) (db iface.Store,
 }
 
 func (ins *Instance) RemoveDB(ctx context.Context, address string) (err error) {
-
 	_, err = ins.Programs.Delete(ctx, address)
 	return
 }
@@ -171,9 +170,15 @@ func (ins *Instance) GetOwnPubKey() (pubKey crypto.PubKey, err error) {
 	return ins.OrbitDB.Identity().GetPublicKey()
 }
 
-func (ins *Instance) Close() {
-	ins.Programs.Close()
-	ins.OrbitDB.Close()
+func (ins *Instance) Close() (err error) {
+	if err = ins.Programs.Close(); err != nil {
+		return
+	}
+
+	if err = ins.OrbitDB.Close(); err != nil {
+		return
+	}
+	return
 }
 
 func (ins *Instance) GetProgramsDB(ctx context.Context) (program map[string][]byte, err error) {
