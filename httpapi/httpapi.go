@@ -109,7 +109,7 @@ func createdb(c *gin.Context) {
 		return
 	}
 
-	db, err = instance.CreateDB(c.Request.Context(), in.Name, in.StoreType, in.AccessIDs)
+	db, _, err = instance.CreateDB(c.Request.Context(), in.Name, in.StoreType, in.AccessIDs)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
@@ -155,7 +155,7 @@ func command(c *gin.Context) {
 	db, connecting := connectingDBs[in.Address]
 	//如果不是，连接并添加数据库（添加动作也会覆盖已经保存过的数据库，如果地址相同）
 	if !connecting {
-		db, err = instance.AddDB(c.Request.Context(), in.Address)
+		db, _, err = instance.AddDB(c.Request.Context(), in.Address)
 		if err != nil {
 			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 			return

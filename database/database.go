@@ -12,12 +12,11 @@ import (
 	"berty.tech/go-orbit-db/accesscontroller"
 	"berty.tech/go-orbit-db/iface"
 
-	// config "github.com/ipfs/go-ipfs-config"
-
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	config "github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 )
 
 const (
@@ -89,7 +88,7 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 	return
 }
 
-func (ins *Instance) CreateDB(ctx context.Context, name string, storetype string, accesseIDs []string) (db iface.Store, err error) {
+func (ins *Instance) CreateDB(ctx context.Context, name string, storetype string, accesseIDs []string) (db iface.Store, events event.Subscription, err error) {
 
 	if name == PROGRAMSDB {
 		err = fmt.Errorf("name can not be '%s'", PROGRAMSDB)
@@ -104,6 +103,11 @@ func (ins *Instance) CreateDB(ctx context.Context, name string, storetype string
 	db, err = ins.OrbitDB.Create(ctx, name, storetype, &orbitdb.CreateDBOptions{
 		AccessController: ac,
 	})
+	if err != nil {
+		return
+	}
+
+	events, err = db.EventBus().Subscribe(event.WildcardSubscription)
 	if err != nil {
 		return
 	}
@@ -123,7 +127,7 @@ func (ins *Instance) CreateDB(ctx context.Context, name string, storetype string
 	return
 }
 
-func (ins *Instance) OpenDB(ctx context.Context, address string) (db iface.Store, err error) {
+func (ins *Instance) OpenDB(ctx context.Context, address string) (db iface.Store, events event.Subscription, err error) {
 
 	db, err = ins.OrbitDB.Open(ctx, address, &orbitdb.CreateDBOptions{})
 	if err != nil {
@@ -131,13 +135,18 @@ func (ins *Instance) OpenDB(ctx context.Context, address string) (db iface.Store
 	}
 
 	err = db.Load(ctx, -1)
+	if err != nil {
+		return
+	}
+
+	events, err = db.EventBus().Subscribe(event.WildcardSubscription)
 
 	return
 }
 
-func (ins *Instance) AddDB(ctx context.Context, address string) (db iface.Store, err error) {
+func (ins *Instance) AddDB(ctx context.Context, address string) (db iface.Store, events event.Subscription, err error) {
 
-	db, err = ins.OpenDB(ctx, address)
+	db, events, err = ins.OpenDB(ctx, address)
 	if err != nil {
 		return
 	}
