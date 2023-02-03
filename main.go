@@ -48,13 +48,13 @@ func main() {
 	data, err := json.Marshal("abc")
 	fmt.Println(string(data), err)
 
-	v, e := ins.Programs.Get(context.TODO(), "hello")
+	v, e := ins.Programs.Get(context.TODO(), "hello111")
 	if e != nil {
-		log.Println(e)
+		log.Println("get error:", e)
 		return
 	}
 
-	log.Println(string(v))
+	log.Println("v", string(v))
 
 	time.Sleep(20 * time.Second)
 

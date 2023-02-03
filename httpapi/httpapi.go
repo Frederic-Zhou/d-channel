@@ -11,9 +11,6 @@ import (
 // 单例，数据库实例
 var instance *database.Instance
 
-// 单例，当前已连接的数据库map，key是数据库地址，value是数据库对象
-var connectingDBs map[string]iface.Store = map[string]iface.Store{}
-
 // 返回消息的的类型
 const (
 	MSG_SUCCESS = "success"
@@ -49,6 +46,7 @@ func Run(addr string) error {
 	router.POST("/close", closeInstance) //关闭实例
 	router.POST("/createdb", createdb)   //创建数据库
 	router.POST("/removedb", removedb)   //移除数据库
+	router.POST("/closedb", closedb)     //关闭数据库
 	router.POST("/command", command)     //执行数据库操作命令
 
 	return router.Run(addr)
@@ -101,7 +99,6 @@ func createdb(c *gin.Context) {
 	}
 
 	var err error
-	var db iface.Store
 
 	in := &createIn{}
 	if err = c.ShouldBind(in); err != nil {
@@ -109,13 +106,11 @@ func createdb(c *gin.Context) {
 		return
 	}
 
-	db, _, err = instance.CreateDB(c.Request.Context(), in.Name, in.StoreType, in.AccessIDs)
+	_, err = instance.CreateDB(c.Request.Context(), in.Name, in.StoreType, in.AccessIDs)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
-
-	connectingDBs[db.Address().String()] = db
 
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 
@@ -123,9 +118,10 @@ func createdb(c *gin.Context) {
 
 // 数据库命令参数
 type commandIn struct {
-	Address string
-	Method  string
-	Params  params
+	Address     string
+	Method      string
+	Params      params
+	OriginPeers []string
 }
 
 // 数据库命令参数中的参数
@@ -152,15 +148,14 @@ func command(c *gin.Context) {
 	}
 
 	//检查是否是连接中的数据库
-	db, connecting := connectingDBs[in.Address]
+	db, connecting := instance.ConnectingDB[in.Address]
 	//如果不是，连接并添加数据库（添加动作也会覆盖已经保存过的数据库，如果地址相同）
 	if !connecting {
-		db, _, err = instance.AddDB(c.Request.Context(), in.Address)
+		db, err = instance.OpenDB(c.Request.Context(), in.Address, in.OriginPeers)
 		if err != nil {
 			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 			return
 		}
-		connectingDBs[in.Address] = db
 	}
 
 	//执行数据库操作命令。
@@ -208,16 +203,33 @@ func removedb(c *gin.Context) {
 		return
 	}
 
-	db, ok := connectingDBs[in.Address]
-	if ok {
-		err = db.Close()
-		if err != nil {
-			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
-			return
-		}
+	err = instance.RemoveDB(c.Request.Context(), in.Address)
+	if err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		return
+	}
+}
+
+type closeIn struct {
+	Address string
+}
+
+// 关闭数据库
+func closedb(c *gin.Context) {
+	if instance == nil {
+		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance is null"})
+		return
 	}
 
-	err = instance.RemoveDB(c.Request.Context(), in.Address)
+	var err error
+
+	in := &closeIn{}
+	if err = c.ShouldBind(in); err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		return
+	}
+
+	err = instance.CloseDB(c.Request.Context(), in.Address)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
