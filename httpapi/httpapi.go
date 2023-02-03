@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"context"
 	"d-channel/database"
+	"log"
 	"net/http"
 
 	"berty.tech/go-orbit-db/iface"
@@ -59,7 +61,7 @@ func bootInstance(c *gin.Context) {
 		return
 	}
 	var err error
-	instance, err = database.BootInstance(c.Request.Context(), database.DEFAULT_PATH, database.DEFAULT_PATH)
+	instance, err = database.BootInstance(context.Background(), database.DEFAULT_PATH, database.DEFAULT_PATH)
 	if err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
@@ -85,9 +87,9 @@ func closeInstance(c *gin.Context) {
 
 // 创建数据库输入参数
 type createIn struct {
-	Name      string
-	StoreType string
-	AccessIDs []string
+	Name      string   `json:"name"`
+	StoreType string   `json:"storetype"`
+	AccessIDs []string `json:"accessids"`
 }
 
 // 创建数据库
@@ -101,7 +103,7 @@ func createdb(c *gin.Context) {
 	var err error
 
 	in := &createIn{}
-	if err = c.ShouldBind(in); err != nil {
+	if err = c.ShouldBindJSON(in); err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
@@ -118,21 +120,19 @@ func createdb(c *gin.Context) {
 
 // 数据库命令参数
 type commandIn struct {
-	Address     string
-	Method      string
-	Params      params
-	OriginPeers []string
-}
+	Address string `json:"address"`
+	Method  string `json:"method"`
 
-// 数据库命令参数中的参数
-type params struct {
-	Key   string
-	Value interface{}
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+
+	OriginPeers []string `json:"originpeers"`
 }
 
 // 执行数据库命令
 func command(c *gin.Context) {
 
+	log.Println("command")
 	if instance == nil {
 		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance is null"})
 		return
@@ -142,8 +142,8 @@ func command(c *gin.Context) {
 	var db iface.Store
 
 	in := &commandIn{}
-	if err = c.ShouldBind(in); err != nil {
-		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+	if err = c.ShouldBindJSON(in); err != nil {
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: "bind err:" + err.Error()})
 		return
 	}
 
@@ -153,15 +153,15 @@ func command(c *gin.Context) {
 	if !connecting {
 		db, err = instance.OpenDB(c.Request.Context(), in.Address, in.OriginPeers)
 		if err != nil {
-			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: "open err:" + err.Error()})
 			return
 		}
 	}
 
 	//执行数据库操作命令。
-	result, err := exec(c.Request.Context(), db, in.Method, in.Params)
+	result, err := exec(c.Request.Context(), db, in.Method, in.Key, in.Value)
 	if err != nil {
-		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: "exec err:" + err.Error()})
 		return
 	}
 
@@ -185,7 +185,7 @@ func programs(c *gin.Context) {
 }
 
 type removeIn struct {
-	Address string
+	Address string `json:"address"`
 }
 
 // 删除数据库
@@ -198,7 +198,7 @@ func removedb(c *gin.Context) {
 	var err error
 
 	in := &removeIn{}
-	if err = c.ShouldBind(in); err != nil {
+	if err = c.ShouldBindJSON(in); err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
@@ -211,7 +211,7 @@ func removedb(c *gin.Context) {
 }
 
 type closeIn struct {
-	Address string
+	Address string `json:"address"`
 }
 
 // 关闭数据库
@@ -224,7 +224,7 @@ func closedb(c *gin.Context) {
 	var err error
 
 	in := &closeIn{}
-	if err = c.ShouldBind(in); err != nil {
+	if err = c.ShouldBindJSON(in); err != nil {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}

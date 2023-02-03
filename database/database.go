@@ -148,11 +148,17 @@ func (ins *Instance) RemoveDB(ctx context.Context, address string) (err error) {
 
 	db, ok := ins.ConnectingDB[address]
 	if ok {
+		err = db.Drop()
+		if err != nil {
+			return
+		}
+
 		err = db.Close()
 		if err != nil {
 			return
 		}
 		delete(ins.ConnectingDB, address)
+
 	}
 
 	_, err = ins.Programs.Delete(ctx, address)
@@ -182,6 +188,8 @@ func (ins *Instance) Close() (err error) {
 			return
 		}
 	}
+
+	ins.ConnectingDB = map[string]iface.Store{}
 
 	if err = ins.OrbitDB.Close(); err != nil {
 		return
