@@ -30,13 +30,13 @@
 	<div class="c4">
 		<div class="m5 p5 w3-border">
 		<div>
-			数据库列表 <a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small">刷新</a>
+			数据库列表 <a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" onclick="listdb()">刷新</a>
 		</div>
 		<div>
 			<ul id="programs"></ul>
 		</div>
 		<div>
-			<a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small">createdb</a>
+			<a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" onclick="show_adddb()">createdb</a>
 		</div>
 		</div>
 	</div>
@@ -53,11 +53,38 @@
 </div>
 
 
+<div id="dlg_adddb" class="w3-modal">
+	<div class="w3-modal-content w3-card-4" style="max-width:400px">
+		<div class="w3-center"><br>
+			<span onclick="$('#dlg_adddb').hide()" class="w3-button w3-xlarge w3-hover-red w3-display-topright" title="Close Modal">&times;</span>
+		</div>
+		<form class="w3-container" id="form_adddb" onsubmit="adddb();return false;">
+			<div class="w3-section">
+				<label><b>name</b></label>
+				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="数据库名称" name="name" required />
+				<label><b>storetype</b></label>
+				<select class="w3-select w3-border" name="storetype">
+					<option value="" disabled selected>Choose storetype</option>
+					<option value="keyvalue">keyvalue</option>
+					<option value="docstore">docstore</option>
+					<option value="counter">counter</option>
+					<option value="feed">feed</option>
+					<option value="eventlog">eventlog</option>
+				</select>
+				<label><b>accessids</b></label>
+				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="允许访问id" name="accessids" />
+				<button class="w3-button w3-block w3-green w3-section w3-padding" type="submit">提交</button>
+			</div>
+		</form>
+	</div>
+</div>
+
 </body>
 <script type="text/javascript" src="../asset/js/jquery1.9.1.min.js"></script>
 <script type="text/javascript">
 var api_host='';
-function post(url,data,fn){
+var db_list={};
+function postjson(url,data,fn){
 	$.ajax({
 		url:url,
 		type:'POST',crossDomain: true,
@@ -71,27 +98,54 @@ function bootdb(){
 	api_host=$.trim($('#api_host').val());
 	$.post(api_host+'/boot','',function(res){
 		$('#btn_close').removeAttr('disabled');
+		$('#btn_boot').attr('disabled','disabled')
+		listdb()
 	});
 }
 function closeconn(){
 	$.post(api_host+'/close',function(res){
 		$('#btn_boot').removeAttr('disabled');
+		$('#btn_close').attr('disabled','disabled')
 	});
+}
+
+function db_name(v){
+	var arr=v.split('/')
+	return arr[arr.length-1]
 }
 function listdb(){
 	$.post(api_host+'/programs','',function(res){
-		
-	});
+		if(!res.message=='success'){
+			alert(res.message);return;
+		}
+		db_list=res.data;
+		var str='';
+		$.each(res.data,function(k,v){
+			str+='<li data-value="'+v+'" data-key="'+k+'">'+db_name(k)+' <a href="javascript:;">close</a> <a href="javascript:;">del</a></li>'
+		});
+		$('#programs').html(str)
+	},'json');
 }
-function adddb(name){
+
+function show_adddb(){
+	$('#dlg_adddb').show();
+	$('#dlg_adddb input,#dlg_adddb select').val('');
+}
+function adddb(){
+	//var data=$('#form_adddb').serialize();
 	var data={
-		'name':name,
-		'storetype':'',
-		'accessids':'',
-	}
-	$.post(api_host+'/createdb',data,function(res){
-		
-	});
+		'name':$('#form_adddb input[name=name]').val(),
+		'storetype':$('#form_adddb select[name=storetype]').val(),
+		'accessids':[$('#form_adddb input[name=accessids]').val()]
+	};
+	var dt=JSON.stringify(data);
+	$.post(api_host+'/createdb',dt,function(res){
+		if(res.message=='success'){
+			listdb();$('#dlg_adddb').hide();
+		}else{
+			alert(res.message)
+		}
+	},'json');
 }
 function deldb(address){
 	var data={'address':address}
