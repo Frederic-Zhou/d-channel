@@ -8,6 +8,7 @@ import (
 
 	"berty.tech/go-orbit-db/iface"
 	"github.com/gin-gonic/gin"
+	cors "github.com/rs/cors/wrapper/gin"
 )
 
 // 单例，数据库实例
@@ -41,8 +42,9 @@ type response struct {
 func Run(addr string) error {
 
 	router := gin.Default()
-	router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
-
+	// router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
+	router.SetTrustedProxies(nil)
+	router.Use(cors.AllowAll())          // 开启 CORS
 	router.POST("/boot", bootInstance)   // 启动实例
 	router.POST("/programs", programs)   // 查看实例内置数据库，其中包含所有数据库信息
 	router.POST("/close", closeInstance) //关闭实例
