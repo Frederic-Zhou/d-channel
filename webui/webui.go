@@ -8,8 +8,9 @@ import (
 func Run(addr string) error {
 
 	router := gin.Default()
-	router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
-	router.Use(cors.Default()) // 开启 CORS
+	router.SetTrustedProxies(nil)
+	// router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
+	router.Use(cors.AllowAll()) // 开启 CORS
 	//设置静态文件
 	router.Static("/asset", "./asset")
 	//设置模板文件地址
