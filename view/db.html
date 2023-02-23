@@ -11,7 +11,9 @@
 
 </head>
 <style type="text/css" media="screen">
-
+.hand{cursor:pointer;}
+.db_list li{}
+.db_list li:hover,.db_list li.on{background-color:#eee;}
 </style>
 <body>
 <div class="wrap pt20 pb20">
@@ -19,24 +21,29 @@
 <div class="rows col-sp8">
 	<div class="c1 tr">host:</div>
 	<div class="c6">
-		<input class="w3-input w3-border" type="text" id="api_host" placeholder="host" value="http://127.0.0.1:8000" />
+		<input class="w3-input w3-border" type="text" placeholder="api_host" v-model="api_host" />
 	</div>
 	<div class="c4">
-		<button href="javascript:;" class="w3-btn w3-blue" id="btn_boot" onclick="bootdb()">boot</button>
-		<button href="javascript:;" class="w3-btn w3-red" id="btn_close" onclick="closeconn()" disabled>close</button>
+		<button href="javascript:;" class="w3-btn w3-blue" id="btn_boot" @click="bootdb" :disabled="connected">boot</button>
+		<button href="javascript:;" class="w3-btn w3-red" id="btn_close" @click="closeconn" :disabled="!connected">close</button>
 	</div>
 </div>
 <div class="rows col-sp12">
 	<div class="c4">
 		<div class="m5 p5 w3-border">
 		<div>
-			数据库列表 <a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" onclick="listdb()">刷新</a>
+			数据库列表 <button href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" @click="listdb" :disabled="!connected">刷新</button>
 		</div>
 		<div>
-			<ul id="programs"></ul>
+			<ul id="programs" class="pl0 db_list">
+				<li v-for="(v,k,i) in db_list" class="pl10 pr10" :class="{on:k==selected_db}">
+					<div class="dib hand" @click="select_db(k,v)">{{db_name(k)}}</div>
+					<div class="dib fr"><a href="javascript:;" @click="closedb(k)">关闭</a> <a href="javascript:;" @click="deldb(k)">删除</a></div>
+				</li>
+			</ul>
 		</div>
 		<div>
-			<a href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" onclick="show_adddb()">createdb</a>
+			<button href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" @click="show_adddb" :disabled="!connected">createdb</button>
 		</div>
 		</div>
 	</div>
@@ -44,7 +51,34 @@
 	
 	<div class="c8">
 		<div class="m5 p5 w3-border">
-			
+			<form @submit.prevent="db_query()">
+			<div class="rows">
+				<div class="c12 mb5">
+					db:<select name="address" class="w3-select w3-border" style="width:100px" v-model="selected_db" @change="change_db">
+						<option value="">请选择</option>
+						<option v-for="(v,k,i) in db_list" :value="k">{{db_name(k)}}</option>
+					</select>
+					方法:
+					<select name="method" class="w3-select w3-border" style="width:100px" v-model="query_method">
+						<option value="">请选择</option>
+						<option v-for="v in methods" :value="v">{{v}}</option>
+					</select>
+					<input type="hidden" name="key" v-model="selected_key"/>
+					<p class="el m5">key:{{selected_key}}</p>
+				</div>
+				<div class="c12">
+					value:
+					<textarea name="test" rows="3" class="w3-input w3-border" v-model="query_value"></textarea>
+					<button type="submit" class="w3-btn w3-blue">command</button>
+				</div>
+				<div class="c12 mt20">
+					data:
+					<textarea name="test" rows="5" class="w3-input w3-border" v-model="query_result_data"></textarea>
+					message:
+					<textarea name="test" rows="5" class="w3-input w3-border" v-model="query_result_msg"></textarea>
+				</div>
+			</div>
+			</form>
 		</div>
 	</div>
 </div>
@@ -58,12 +92,12 @@
 		<div class="w3-center"><br>
 			<span onclick="$('#dlg_adddb').hide()" class="w3-button w3-xlarge w3-hover-red w3-display-topright" title="Close Modal">&times;</span>
 		</div>
-		<form class="w3-container" id="form_adddb" onsubmit="adddb();return false;">
+		<form class="w3-container" id="form_adddb" @submit.prevent="adddb()" onsubmit="return false;">
 			<div class="w3-section">
 				<label><b>name</b></label>
-				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="数据库名称" name="name" required />
+				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="数据库名称" name="name" v-model="dbform.name" required />
 				<label><b>storetype</b></label>
-				<select class="w3-select w3-border" name="storetype">
+				<select class="w3-select w3-border" name="storetype" v-model="dbform.storetype">
 					<option value="" disabled selected>Choose storetype</option>
 					<option value="keyvalue">keyvalue</option>
 					<option value="docstore">docstore</option>
@@ -72,7 +106,7 @@
 					<option value="eventlog">eventlog</option>
 				</select>
 				<label><b>accessids</b></label>
-				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="允许访问id" name="accessids" />
+				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="允许访问id" name="accessids" v-model="dbform.accessids" />
 				<button class="w3-button w3-block w3-green w3-section w3-padding" type="submit">提交</button>
 			</div>
 		</form>
@@ -81,9 +115,124 @@
 
 </body>
 <script type="text/javascript" src="../asset/js/jquery1.9.1.min.js"></script>
+<script type="text/javascript" src="../asset/js/petite-vue.min.js"></script>
 <script type="text/javascript">
-var api_host='';
-var db_list={};
+PetiteVue.createApp({
+	connected:false,
+	api_host:'http://127.0.0.1:8000',
+	db_list:{},
+	selected_db:'',
+	selected_key:'',
+	query_value:'',
+	query_method:'',
+	query_result_data:'',
+	query_result_msg:'',
+	methods:['all','put','get','add','delete','query'],
+
+	listdb:function(){
+		var zs=this;
+		$.post(this.api_host+'/programs','',function(res){
+			if(!res.message=='success'){
+				alert(res.message);return;
+			}
+			zs.db_list=res.data;
+		},'json');
+	},
+	bootdb:function(){
+		var zs=this;
+		$.post(this.api_host+'/boot','',function(res){
+			zs.connected=true;
+			zs.listdb()
+		});
+	},
+	select_db:function(v,key){
+		this.selected_db=v;
+		this.selected_key=key;
+	},
+	change_db:function(){
+		this.selected_key = this.db_list[this.selected_db]
+	},
+	closeconn:function(){
+		var zs=this;
+		$.post(this.api_host+'/close',function(res){
+			zs.connected=false;
+		});
+	},
+	
+	show_adddb:function(){
+		if(!this.connected){alert('数据库未连接');return false;}
+		$('#dlg_adddb').show()
+	},
+
+	dbform:{
+		name:'',
+		storetype:'',
+		accessids:'',
+		reset:function(){
+			this.name='';
+			this.storetype='';
+			this.accessids='';
+		}
+	},
+	adddb:function(){
+		if(!this.connected){alert('数据库未连接');return false;}
+		var zs=this;
+		var data={
+			'name':this.dbform.name,
+			'storetype':this.dbform.storetype,
+			'accessids':[this.dbform.accessids]
+		};
+		var dt=JSON.stringify(data);
+		$.post(this.api_host+'/createdb',dt,function(res){
+			if(res.message=='success'){
+				zs.listdb();
+				zs.dbform.reset();
+				$('#dlg_adddb').hide();
+			}else{
+				alert(res.message+"\r\n"+res.data)
+			}
+		},'json');
+	},
+	deldb:function(name){
+		if(!this.connected){alert('数据库未连接');return false;}
+		if(!confirm('是否要删除【'+db_name(name)+'】？')) return;
+		var zs=this;
+		var data={'address':name}
+		var dt=JSON.stringify(data);
+		$.post(this.api_host+'/removedb',dt,function(res){
+			zs.listdb();
+		},'json');
+	},
+	closedb:function(name){
+		if(!this.connected){alert('数据库未连接');return false;}
+		var zs=this;
+		var data={'address':name}
+		var dt=JSON.stringify(data);
+		$.post(this.api_host+'/closedb',dt,function(res){
+			
+		},'json');
+	},
+	db_query:function(){
+		if(!this.connected){alert('数据库未连接');return false;}
+		var zs=this;
+		var data={
+			'address':zs.selected_db,
+			'method':zs.query_method,
+			'key':zs.selected_key,
+			'value':zs.query_value,
+			'originpeers':[],
+		}
+		console.log(data)
+		var dt=JSON.stringify(data);
+		$.post(this.api_host+'/command',dt,function(res){
+			zs.query_result_data=res.data;
+			zs.query_result_msg=res.message;
+		},'json');
+	}
+}).mount();
+
+
+
 function postjson(url,data,fn){
 	$.ajax({
 		url:url,
@@ -94,88 +243,11 @@ function postjson(url,data,fn){
 		}
 	})
 }
-function bootdb(){
-	api_host=$.trim($('#api_host').val());
-	$.post(api_host+'/boot','',function(res){
-		$('#btn_close').removeAttr('disabled');
-		$('#btn_boot').attr('disabled','disabled')
-		listdb()
-	});
-}
-function closeconn(){
-	$.post(api_host+'/close',function(res){
-		$('#btn_boot').removeAttr('disabled');
-		$('#btn_close').attr('disabled','disabled')
-	});
-}
 
 function db_name(v){
 	var arr=v.split('/')
 	return arr[arr.length-1]
 }
-function listdb(){
-	$.post(api_host+'/programs','',function(res){
-		if(!res.message=='success'){
-			alert(res.message);return;
-		}
-		db_list=res.data;
-		var str='';
-		$.each(res.data,function(k,v){
-			str+='<li data-value="'+v+'" data-key="'+k+'">'+db_name(k)+' <a href="javascript:;">close</a> <a href="javascript:;">del</a></li>'
-		});
-		$('#programs').html(str)
-	},'json');
-}
-
-function show_adddb(){
-	$('#dlg_adddb').show();
-	$('#dlg_adddb input,#dlg_adddb select').val('');
-}
-function adddb(){
-	//var data=$('#form_adddb').serialize();
-	var data={
-		'name':$('#form_adddb input[name=name]').val(),
-		'storetype':$('#form_adddb select[name=storetype]').val(),
-		'accessids':[$('#form_adddb input[name=accessids]').val()]
-	};
-	var dt=JSON.stringify(data);
-	$.post(api_host+'/createdb',dt,function(res){
-		if(res.message=='success'){
-			listdb();$('#dlg_adddb').hide();
-		}else{
-			alert(res.message)
-		}
-	},'json');
-}
-function deldb(address){
-	var data={'address':address}
-	$.post(api_host+'/removedb',data,function(res){
-		
-	});
-}
-function closedb(address){
-	var data={'address':address}
-	$.post(api_host+'/closedb',data,function(res){
-		
-	});
-}
-function db(){
-	var data={
-		'address':'',
-		'method':'',
-		'key':'',
-		'value':'',
-		'originpeers':[],
-	}
-	$.post(api_host+'/command',data,function(res){
-		
-	});
-}
-
-
-$(function(){
-	
-});
 </script>
 
 </html>
