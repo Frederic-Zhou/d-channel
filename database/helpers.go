@@ -40,6 +40,7 @@ func setupPlugins(path string) error {
 }
 func createRepo(repoPath string) error {
 
+	fmt.Println("created new repo")
 	var cfg *config.Config
 	var err error
 
@@ -66,17 +67,19 @@ func createRepo(repoPath string) error {
 func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, icore.CoreAPI, error) {
 	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
+		fmt.Println("create node error", err)
 		err = createRepo(repoPath)
 		if err != nil {
+			fmt.Println("create Repo error", err)
 			return nil, nil, err
 		}
 	}
 
 	nodeOptions := &core.BuildCfg{
-		Online: true,
-		// Permanent: true,
-		Routing: libp2p.DHTClientOption, // DHTOption
-		Repo:    repo,
+		Online:    true,
+		Permanent: true,
+		Routing:   libp2p.DHTClientOption, // DHTOption
+		Repo:      repo,
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},

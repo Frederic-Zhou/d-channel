@@ -16,8 +16,8 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	config "github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const (
@@ -77,7 +77,8 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 	ins.Repo = repoPath
 
 	if err = setupPlugins(repoPath); err != nil {
-		return
+		//TODO: 为什么第二次启动会报错。
+		// return
 	}
 
 	ins.IPFSNode, ins.IPFSCoreAPI, err = createNode(ctx, repoPath)
@@ -194,6 +195,7 @@ func (ins *Instance) Close() (err error) {
 	if err = ins.OrbitDB.Close(); err != nil {
 		return
 	}
+	ins = nil
 	return
 }
 

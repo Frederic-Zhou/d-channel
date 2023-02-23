@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"d-channel/database"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -68,6 +69,8 @@ func bootInstance(c *gin.Context) {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
+
+	fmt.Println("PeerID", instance.IPFSNode.Identity.String())
 
 	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 }
@@ -210,6 +213,7 @@ func removedb(c *gin.Context) {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 }
 
 type closeIn struct {
@@ -236,4 +240,5 @@ func closedb(c *gin.Context) {
 		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
 }
