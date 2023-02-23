@@ -60,7 +60,7 @@
 					</select>
 					method:
 					<label v-for="v in methods">
-						<input type="radio" class="w3-radio" name="method" :value="v" v-model="query_method" />{{v}}
+						<input type="radio" class="w3-radio" name="method" :value="v" v-model="query_method" />{{v}} &nbsp; 
 					</label>
 				</div>
 				<div class="c12">
@@ -225,7 +225,6 @@ PetiteVue.createApp({
 			'value':zs.query_value,
 			'originpeers':[],
 		}
-		console.log(data)
 		var dt=JSON.stringify(data);
 		$.post(this.api_host+'/command',dt,function(res){
 			if(typeof(res.data)=='string'){
