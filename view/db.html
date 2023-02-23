@@ -37,7 +37,7 @@
 		<div>
 			<ul id="programs" class="pl0 db_list">
 				<li v-for="(v,k,i) in db_list" class="pl10 pr10" :class="{on:k==selected_db}">
-					<div class="dib hand" @click="select_db(k,v)">{{db_name(k)}}</div>
+					<div class="dib hand" @click="select_db(k,v)" style="min-width:120px">{{db_name(k)}}</div>
 					<div class="dib fr"><a href="javascript:;" @click="closedb(k)">关闭</a> <a href="javascript:;" @click="deldb(k)">删除</a></div>
 				</li>
 			</ul>
@@ -58,24 +58,25 @@
 						<option value="">请选择</option>
 						<option v-for="(v,k,i) in db_list" :value="k">{{db_name(k)}}</option>
 					</select>
-					方法:
-					<select name="method" class="w3-select w3-border" style="width:100px" v-model="query_method">
-						<option value="">请选择</option>
-						<option v-for="v in methods" :value="v">{{v}}</option>
-					</select>
-					<input type="hidden" name="key" v-model="selected_key"/>
-					<p class="el m5">key:{{selected_key}}</p>
+					method:
+					<label v-for="v in methods">
+						<input type="radio" class="w3-radio" name="method" :value="v" v-model="query_method" />{{v}} &nbsp; 
+					</label>
 				</div>
 				<div class="c12">
+					key:
+					<input type="text" name="key" class="w3-input w3-border" v-model="query_key"/>
 					value:
-					<textarea name="test" rows="3" class="w3-input w3-border" v-model="query_value"></textarea>
-					<button type="submit" class="w3-btn w3-blue">command</button>
+					<textarea name="query_value" rows="3" class="w3-input w3-border" v-model="query_value"></textarea>
+					<button type="submit" class="w3-btn w3-blue" :disabled="!connected">command</button>
 				</div>
 				<div class="c12 mt20">
 					data:
-					<textarea name="test" rows="5" class="w3-input w3-border" v-model="query_result_data"></textarea>
+					<textarea rows="5" class="w3-input w3-border">{{query_result_data}}</textarea>
+					base64解码:
+					<textarea rows="3" class="w3-input w3-border">{{query_result_de_data}}</textarea>
 					message:
-					<textarea name="test" rows="5" class="w3-input w3-border" v-model="query_result_msg"></textarea>
+					<textarea rows="3" class="w3-input w3-border">{{query_result_msg}}</textarea>
 				</div>
 			</div>
 			</form>
@@ -105,8 +106,8 @@
 					<option value="feed">feed</option>
 					<option value="eventlog">eventlog</option>
 				</select>
-				<label><b>accessids</b></label>
-				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="允许访问id" name="accessids" v-model="dbform.accessids" />
+				<!--<label><b>accessids</b></label>
+				<input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="允许访问id" name="accessids" v-model="dbform.accessids" />-->
 				<button class="w3-button w3-block w3-green w3-section w3-padding" type="submit">提交</button>
 			</div>
 		</form>
@@ -125,7 +126,9 @@ PetiteVue.createApp({
 	selected_key:'',
 	query_value:'',
 	query_method:'',
+	query_key:'',
 	query_result_data:'',
+	query_result_de_data:'',
 	query_result_msg:'',
 	methods:['all','put','get','add','delete','query'],
 
@@ -180,7 +183,7 @@ PetiteVue.createApp({
 		var data={
 			'name':this.dbform.name,
 			'storetype':this.dbform.storetype,
-			'accessids':[this.dbform.accessids]
+			//'accessids':[this.dbform.accessids]
 		};
 		var dt=JSON.stringify(data);
 		$.post(this.api_host+'/createdb',dt,function(res){
@@ -218,14 +221,23 @@ PetiteVue.createApp({
 		var data={
 			'address':zs.selected_db,
 			'method':zs.query_method,
-			'key':zs.selected_key,
+			'key':zs.query_key,
 			'value':zs.query_value,
 			'originpeers':[],
 		}
-		console.log(data)
 		var dt=JSON.stringify(data);
 		$.post(this.api_host+'/command',dt,function(res){
-			zs.query_result_data=res.data;
+			if(typeof(res.data)=='string'){
+				zs.query_result_data=res.data;
+				try{
+					zs.query_result_de_data=atob(res.data);
+				}catch(e){
+					zs.query_result_de_data=''
+				}
+			}else{
+				zs.query_result_data=JSON.stringify(res.data);
+				zs.query_result_de_data=''
+			}
 			zs.query_result_msg=res.message;
 		},'json');
 	}
