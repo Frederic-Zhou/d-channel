@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -23,24 +24,28 @@ import (
 )
 
 func setupPlugins(path string) error {
+
 	plugins, err := loader.NewPluginLoader(filepath.Join(path, "plugins"))
 	if err != nil {
-		return fmt.Errorf("error loading plugins: %s", err)
+		err = fmt.Errorf("error loading plugins: %s", err)
+		return err
 	}
 
-	if err := plugins.Initialize(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+	if err = plugins.Initialize(); err != nil {
+		err = fmt.Errorf("error initializing plugins: %s", err)
+		return err
 	}
 
-	if err := plugins.Inject(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+	if err = plugins.Inject(); err != nil {
+		err = fmt.Errorf("error Inject plugins: %s", err)
+		log.Println(err.Error())
 	}
 
 	return nil
 }
 func createRepo(repoPath string) error {
 
-	fmt.Println("created new repo")
+	log.Printf("created new repo\n")
 	var cfg *config.Config
 	var err error
 
@@ -65,12 +70,21 @@ func createRepo(repoPath string) error {
 	return nil
 }
 func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, icore.CoreAPI, error) {
+
 	repo, err := fsrepo.Open(repoPath)
+
 	if err != nil {
-		fmt.Println("create node error", err)
-		err = createRepo(repoPath)
-		if err != nil {
-			fmt.Println("create Repo error", err)
+
+		log.Printf("create node error: %s\n", err.Error())
+
+		//如果是属于没有repo的错误，则创建
+		if _, ok := err.(fsrepo.NoRepoError); ok {
+			err = createRepo(repoPath)
+			if err != nil {
+				log.Printf("create repo error: %s\n", err.Error())
+				return nil, nil, err
+			}
+		} else {
 			return nil, nil, err
 		}
 	}
