@@ -58,15 +58,14 @@ func Run(addr string) error {
 
 // 启动实例，运行成功过后，赋值给全局变量 instance
 func bootInstance(c *gin.Context) {
-	if instance != nil {
-		c.JSON(http.StatusOK, response{Message: MSG_FAIL, Data: "instance is created"})
-		return
-	}
-	var err error
-	instance, err = database.BootInstance(context.Background(), database.DEFAULT_PATH, database.DEFAULT_PATH)
-	if err != nil {
-		c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
-		return
+	if instance == nil {
+		var err error
+		instance, err = database.BootInstance(context.Background(), database.DEFAULT_PATH, database.DEFAULT_PATH)
+		if err != nil {
+			c.JSON(http.StatusOK, response{Message: MSG_ERROR, Data: err.Error()})
+			return
+		}
+
 	}
 
 	c.JSON(http.StatusOK,
