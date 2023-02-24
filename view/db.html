@@ -24,26 +24,37 @@
 		<input class="w3-input w3-border" type="text" placeholder="api_host" v-model="api_host" />
 	</div>
 	<div class="c4">
-		<button href="javascript:;" class="w3-btn w3-blue" id="btn_boot" @click="bootdb" :disabled="connected">boot</button>
-		<button href="javascript:;" class="w3-btn w3-red" id="btn_close" @click="closeconn" :disabled="!connected">close</button>
+		<button class="w3-btn w3-blue" id="btn_boot" @click="bootdb" :disabled="connected">boot</button>
+		<button class="w3-btn w3-red" id="btn_close" @click="closeconn" :disabled="!connected">close</button>
+	</div>
+	<div class="c12">
+		<p class="m0 el">peerID:
+			<button class="w3-btn w3-teal w3-tiny w3-padding-small" @click="copy(my_peerID)" :disabled="!connected">复制</button>
+			{{my_peerID}}
+		</p>
+		<p class="m0 el">
+			orbitdbID:
+			<button class="w3-btn w3-teal w3-tiny w3-padding-small" @click="copy(my_orbitdbID)" :disabled="!connected">复制</button>
+			{{my_orbitdbID}}
+		</p>
 	</div>
 </div>
 <div class="rows col-sp12">
 	<div class="c4">
 		<div class="m5 p5 w3-border">
 		<div>
-			数据库列表 <button href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" @click="listdb" :disabled="!connected">刷新</button>
+			数据库列表 <button class="w3-btn w3-blue w3-tiny w3-padding-small" @click="listdb" :disabled="!connected">刷新</button>
 		</div>
 		<div>
 			<ul id="programs" class="pl0 db_list">
-				<li v-for="(v,k,i) in db_list" class="pl10 pr10" :class="{on:k==selected_db}">
+				<li v-for="(v,k,i) in db_list" class="pl10 pr10" :class="{'w3-pale-green':k==selected_db}">
 					<div class="dib hand" @click="select_db(k,v)" style="min-width:120px">{{db_name(k)}}</div>
 					<div class="dib fr"><a href="javascript:;" @click="closedb(k)">关闭</a> <a href="javascript:;" @click="deldb(k)">删除</a></div>
 				</li>
 			</ul>
 		</div>
 		<div>
-			<button href="javascript:;" class="w3-btn w3-blue w3-tiny w3-padding-small" @click="show_adddb" :disabled="!connected">createdb</button>
+			<button class="w3-btn w3-blue w3-tiny w3-padding-small" @click="show_adddb" :disabled="!connected">createdb</button>
 		</div>
 		</div>
 	</div>
@@ -64,6 +75,10 @@
 					</label>
 				</div>
 				<div class="c12">
+					address:
+					<input type="text" name="key" class="w3-input w3-border" v-model="selected_db"/>
+					originpeers:一行一个，不填留空
+					<textarea rows="3" class="w3-input w3-border" v-model="query_peerids"></textarea>
 					key:
 					<input type="text" name="key" class="w3-input w3-border" v-model="query_key"/>
 					value:
@@ -114,13 +129,37 @@
 	</div>
 </div>
 
+<textarea type="text" id="copytxt" value="" style="opacity:0;height:14px;position:fixed;top:0;z-index:-1;" readonly></textarea>
+
 </body>
 <script type="text/javascript" src="../asset/js/jquery1.9.1.min.js"></script>
 <script type="text/javascript" src="../asset/js/petite-vue.min.js"></script>
 <script type="text/javascript">
+var el_copy = $('#copytxt').get(0)
+function do_copy(str) {
+	el_copy.value = str;
+	selectText(el_copy, 0, str.length);
+	document.execCommand("Copy");
+	el_copy.blur();
+}
+function selectText(textbox, startIndex, stopIndex) {
+	if (textbox.createTextRange) {//ie
+		var range = textbox.createTextRange();
+		range.collapse(true);
+		range.moveStart('character', startIndex);//起始光标
+		range.moveEnd('character', stopIndex - startIndex);//结束光标
+		range.select();//不兼容苹果
+	} else {//firefox/chrome
+		textbox.setSelectionRange(startIndex, stopIndex);
+		textbox.focus();
+	}
+}
+
 PetiteVue.createApp({
 	connected:false,
 	api_host:'http://127.0.0.1:8000',
+	my_peerID:'',
+	my_orbitdbID:'',
 	db_list:{},
 	selected_db:'',
 	selected_key:'',
@@ -130,8 +169,23 @@ PetiteVue.createApp({
 	query_result_data:'',
 	query_result_de_data:'',
 	query_result_msg:'',
+	query_peerids:'',
 	methods:['all','put','get','add','delete','query'],
 
+	copy:function(str){
+		do_copy(str)
+	},
+	bootdb:function(){
+		var zs=this;
+		$.post(this.api_host+'/boot','',function(res){
+			zs.connected=true;
+			zs.listdb();
+			if(res['data']){
+				zs.my_peerID=res['data']['peerID'];
+				zs.my_orbitdbID=res['data']['orbitdbID'];
+			}
+		});
+	},
 	listdb:function(){
 		var zs=this;
 		$.post(this.api_host+'/programs','',function(res){
@@ -140,13 +194,6 @@ PetiteVue.createApp({
 			}
 			zs.db_list=res.data;
 		},'json');
-	},
-	bootdb:function(){
-		var zs=this;
-		$.post(this.api_host+'/boot','',function(res){
-			zs.connected=true;
-			zs.listdb()
-		});
 	},
 	select_db:function(v,key){
 		this.selected_db=v;
@@ -218,19 +265,24 @@ PetiteVue.createApp({
 	db_query:function(){
 		if(!this.connected){alert('数据库未连接');return false;}
 		var zs=this;
+		var p_arr=($.trim(zs.query_peerids)).split("\n");
+		if(p_arr.length==1){
+			if(p_arr[0]=='') p_arr=[];
+		}
 		var data={
 			'address':zs.selected_db,
 			'method':zs.query_method,
 			'key':zs.query_key,
 			'value':zs.query_value,
-			'originpeers':[],
+			'originpeers':p_arr,
 		}
 		var dt=JSON.stringify(data);
 		$.post(this.api_host+'/command',dt,function(res){
 			if(typeof(res.data)=='string'){
 				zs.query_result_data=res.data;
 				try{
-					zs.query_result_de_data=atob(res.data);
+					var txt=decodeURIComponent(escape(atob(res.data)))
+					zs.query_result_de_data=txt;
 				}catch(e){
 					zs.query_result_de_data=''
 				}
