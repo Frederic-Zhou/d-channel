@@ -77,8 +77,7 @@ func BootInstance(ctx context.Context, repoPath, dbpath string) (ins *Instance, 
 	ins.Repo = repoPath
 
 	if err = setupPlugins(repoPath); err != nil {
-		//TODO: 为什么第二次启动会报错。
-		// return
+		return
 	}
 
 	ins.IPFSNode, ins.IPFSCoreAPI, err = createNode(ctx, repoPath)
@@ -180,8 +179,11 @@ func (ins *Instance) CloseDB(ctx context.Context, address string) (err error) {
 }
 
 func (ins *Instance) Close() (err error) {
-	if err = ins.Programs.Close(); err != nil {
-		return
+
+	if ins.Programs != nil {
+		if err = ins.Programs.Close(); err != nil {
+			return
+		}
 	}
 
 	for _, db := range ins.ConnectingDB {
@@ -192,9 +194,12 @@ func (ins *Instance) Close() (err error) {
 
 	ins.ConnectingDB = map[string]iface.Store{}
 
-	if err = ins.OrbitDB.Close(); err != nil {
-		return
+	if ins.OrbitDB != nil {
+		if err = ins.OrbitDB.Close(); err != nil {
+			return
+		}
 	}
+
 	ins = nil
 	return
 }
