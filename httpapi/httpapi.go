@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"d-channel/database"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -70,9 +69,15 @@ func bootInstance(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("PeerID", instance.IPFSNode.Identity.String())
-
-	c.JSON(http.StatusOK, response{Message: MSG_SUCCESS})
+	c.JSON(http.StatusOK,
+		response{
+			Message: MSG_SUCCESS,
+			Data: map[string]string{
+				"peerID":    instance.IPFSNode.Identity.String(),
+				"orbitdbID": instance.OrbitDB.Identity().ID,
+			},
+		},
+	)
 }
 
 // 关闭实例，关闭成功后，instance为空
